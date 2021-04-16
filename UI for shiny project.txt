@@ -1,0 +1,48 @@
+# UI Section
+
+ui = fluidPage(
+    navbarPage(
+    title = "Home Workout App",
+    tabPanel(
+      title = "Section 1: Exercise Generator",
+      sidebarLayout(
+        sidebarPanel(
+          selectInput(inputId = "equip", label = "What equipment are you planning to use?", multiple = F,choices = c("Just my body" = "nothing", 
+                                                                                                        "Dumbbells" = "db", 
+                                                                                                        "Kettlebells" = "kb",
+                                                                                                        "Barbell & Plates" = "bar",
+                                                                                                        "Resistance Bands" = "rb_long")), 
+          selectInput(inputId = "area", label = "What area of focus are you interested in working?", choices = c("Shoulders" = "sh", 
+                                                                                                                 "Chest" = "ch", 
+                                                                                                                 "Back" = "back",
+                                                                                                                 "Biceps" = "bi",
+                                                                                                                 "Triceps" = "tri", 
+                                                                                                                 "Forearms" = "fore",
+                                                                                                                 "Quadriceps" = "quad",
+                                                                                                                 "Hamstrings" = "ham",
+                                                                                                                 "Glutes" = "glut",
+                                                                                                                 "Abdominals" = "core")),
+          sliderInput(input = "skill", label = "Complexity scale for your exercise (from low to high)", min = 1, max = 5, step = 1, value = 1)
+        ), 
+        mainPanel(
+          h1(strong(textOutput(outputId = "exercise")), align = "center"), 
+          uiOutput(outputId = "video")
+        )
+      )
+    ), 
+    tabPanel(
+      title = "Section 2: Unit Conversion",
+      sidebarLayout(
+        sidebarPanel(
+          numericInput(inputId = "number", label = "Enter the number to convert", value = 0),
+          radioButtons(inputId = "unit", label = "What unit is this in?", choices = c("Kilograms" = "kg", 
+                                                                                         "Pounds" = "lbs"), selected = "Pounds")
+        ), 
+        mainPanel(
+          h1(strong(textOutput(outputId = "load")), align = "center"), 
+          uiOutput(outputId = "gif")
+        )
+      )
+    )
+  )
+)

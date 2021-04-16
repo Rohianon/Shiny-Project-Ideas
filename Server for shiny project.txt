@@ -1,0 +1,66 @@
+# Server section 
+
+server = function(input, output) {
+  
+  output$exercise = renderText({
+    
+                     
+                          as.character(SampleExerciseList %>% 
+                          filter(Stuff == input$equip) %>% 
+                          filter(Muscles == input$area) %>% 
+                          filter(Complexity == input$skill) %>% 
+                          select(Exercise))
+      
+                    })
+  
+  output$load = renderText({
+    
+    paste(
+      "Your weight in", 
+      as.character(
+        ifelse(input$unit == "kg", "pounds (aka. American Freedom Units) is", "kilograms (aka. what the rest of the world uses) is")
+      ), 
+      as.character(
+        ifelse(input$unit == "kg", round_any((input$number / 0.4536), 1, f = round), round_any((input$number * 0.4536), 1, f = round))
+      )
+    )
+    
+  })
+  
+  
+  output$video = renderUI({
+    
+    url = as.character(
+      SampleExerciseList %>% 
+        filter(Stuff == input$equip) %>%
+        filter(Muscles == input$area) %>% 
+        filter(Complexity == input$skill) %>% 
+        select(Link)
+    )
+    
+    tags$iframe(
+      src = url, 
+      height = 500, 
+      width = 800
+    )
+    
+  })
+  
+  output$gif = renderUI(
+    {
+      
+      url_world = "https://media0.giphy.com/media/Imkav206U2lFe/giphy.gif?cid=ecf05e4715l254damg22jouth57rmt9yegwvkc4anbwp5all&rid=giphy.gif"
+      url_usa = "https://media0.giphy.com/media/8KnfG3knLExpu/giphy.gif?cid=ecf05e47ljiequiwggqz7cco0zup8tdkq817u6ecxy29c8eu&rid=giphy.gif"
+      
+      
+      determine = ifelse(input$unit == "kg", url_usa, url_world)
+      
+      tags$img(src = determine, width = 800, height = 500)
+      
+    }
+  )
+  
+}
+
+
+shinyApp(ui = ui, server = server)

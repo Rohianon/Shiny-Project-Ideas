@@ -1,0 +1,18 @@
+# Loading the necessary libraries for the app
+
+library(shiny)
+library(tidyverse)
+library(plyr)
+
+
+# Reading the data set and formatting it correctly
+
+SampleExerciseList <- read_csv("SampleExerciseList.csv")
+
+View(SampleExerciseList)
+
+SampleExerciseList = SampleExerciseList %>% 
+			mutate(
+				Complexity = as.numeric(Complexity) 
+			)
+
