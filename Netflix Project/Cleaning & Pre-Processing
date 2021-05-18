@@ -157,8 +157,8 @@ netflix = netflix %>%
 
 netflix = netflix %>% 
   mutate(
-    country = ifelse(c(is.na(country) & str_detect(listed_in, "[Kk]orea") == TRUE), "South Korea", 
-              ifelse(c(is.na(country) & str_detect(listed_in, "[Bb]ritish") == TRUE), "United Kingdom",  country))      
+    country = ifelse(c(is.na(country) & (str_detect(listed_in, "[Kk]orea") == TRUE)), "South Korea", 
+              ifelse(c(is.na(country) & (str_detect(listed_in, "[Bb]ritish") == TRUE)), "United Kingdom",  country))      
   )
 
 
