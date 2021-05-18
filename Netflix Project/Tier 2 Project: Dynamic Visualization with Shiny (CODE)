@@ -2,20 +2,383 @@
 # Let's say that this time, I want to be able to dynamically show off whereby I want a quick page showing off the cast variable.  
 # Specifically, I want to be able to address it in terms of (a) Credited Cast Content vs. Non-Credited Cast Content, (b) Overall vs. Headlining vs. Supporting Cast 
 
-# STEP 1: Get basic skeleton
 
-ui = fluidPage({
+# STEP 1: Create the UI Section in a manner that presents an organization that matches the projected outlook 
 
-  navlistPanel(
-    tabPanel(
-      title = "All about the cast"
-    )
-  )
+ui = fluidPage(
+      tags$h1("All About the Cast"), 
+      tags$div(
+        HTML("<body>
+                <p style = 'font-size: 120%; text-align: justify'> 
+                    Let's be honest, what makes or breaks watching something is all about the cast.  So why not look closer at this by checking out how certain cast-credited content differs from non-cast-credited content.  Also, since we want to have a deeper dive, let's look at what are the most credited actor/actress across genre, language and casting type.
+                </p>
+             </body>")
+      ),
+      fluidRow(
+        column(width = 3, wellPanel(radioButtons(inputId = "cast_charts", label = "What sort of chart involving cast type are you interested in observing?", choices = c("Just looking at cast counts" = "default", "Across content type" = "type", "Across content rating" = "content","English content vs. Non-English content" = "english","Across genres" = 'genre')))), 
+        column(width = 8, plotOutput(outputId = "cast_charts"))
+      ), 
+      tags$br(), 
 
-})
+      fluidRow(
+        column(width = 4, wellPanel(
+          selectInput(inputId = "cast_comparisons", label = "Observe the top Actors/Actresses by what?", 
+                      choices = c("Genre: TV Action & Adventure" = "TV Action & Adventure",
+                                  "Genre: Movie Action & Adventure" = "Action & Adventure",
+                                  "Genre: TV Drama" = "TV Dramas",
+                                  "Genre: Movie Drama" = "Dramas",
+                                  "Genre: TV Comedy" = "TV Comedies",
+                                  "Genre: Movie Comedy" = "Comedies",
+                                  "Genre: TV Horror" = "TV Horror",
+                                  "Genre: Movie Horror" = "Horror Movies",
+                                  "Genre: Stand-Up/Skits/Talk Shows" = "Stand-Up Comedy & Talk Shows",
+                                  "Genre: Stand-Up Specials" = "Stand-Up Comedy",
+                                  "Genre: Music & Musicals" = "Music & Musicals",
+                                  "Genre: Sports" = "Sports Movies", 
+                                  "Genre: LGBTQ" = "LGBTQ Movies",
+                                  "Genre: Independent Movies" = "Independent Movies",
+                                  "Genre: Classic & Cult TV" = "Classic & Cult TV",
+                                  "Genre: Cult Movies" = "Cult Movies",
+                                  "Genre: Classic Movies" = "Classic Movies",
+                                  "Genre: Korean TV" = "Korean TV Shows",
+                                  "Genre: British TV" = "British TV Shows",
+                                  "Genre: Spanish TV" = "Spanish-Language TV Shows",
+                                  "Genre: Children & Family Movies" = "Children & Family Movies",
+                                  "Genre: Kids' TV" = "Kids' TV",
+                                  "Genre: Teen TV" = "Teen TV Shows",
+                                  "Genre: TV Thriller" = "TV Thrillers",
+                                  "Genre: Movie Thriller" = "Thrillers",
+                                  "Genre: Reality TV" = "Reality TV", 
+                                  "Genre: International Movie" = "International Movies",
+                                  "Genre: International TV" = "International TV Shows",
+                                  "Genre: TV SciFi & Fantasy" = "TV Sci-Fi & Fantasy", 
+                                  "Genre: Movie SciFi & Fantasy" = "Sci-Fi & Fantasy", 
+                                  "Genre: Science & Nature TV" = "Science & Nature TV", 
+                                  "Genre: TV Romance" = "Romantic TV Shows",
+                                  "Genre: Movie Romance" = "Romantic Movies",
+                                  "Genre: Anime Features" = "Anime Features",
+                                  "Genre: Anime Series" = "Anime Series",
+                                  "Genre: Crime TV" = "Crime TV Shows",
+                                  "Genre: Mystery TV" = "TV Mysteries", 
+                                  "Genre: Documentaries" = "Documentaries",
+                                  "Genre: Docuseries" = "Docuseries",
+                                  "Genre: Faith & Spirituality" = "Faith & Spirituality")),
+          radioButtons(inputId = "cast_language", label = "Are you interested in English-Only Actors/Actresses?", 
+                       choices = c("Yes, just English" = "English Speaking",
+                                   "No, only Non-English" = "Non-English Speaking",
+                                   "Both" = "both")), 
+          radioButtons(inputId = "cast_type", label = "What cast billing are you interested in?", 
+                       choices = c("Headliners Only" = "headliner",
+                                   "Supporting Only" = "supporting cast",
+                                   "Both" = "both")))), 
+        column(width = 4, plotOutput(outputId = "top_cast")), 
+        column(width = 4, uiOutput(outputId = "cast_image")))
 
-server = function(input, output) {}
+)
 
-shinyApp(ui = ui, server = server) 
+# STEP 2: Making the necessary back end components..... I'll break this up into parts along the way for the sake of easier reading
 
-# STEP 2: Create the UI Section in a manner that presents an organization that matches the projected outlook 
+server = function(input, output) {
+
+ ## Part 1: Create a reactive element to allow for switching between plots 
+
+ cast_n_director_genre_2 = reactive({switch(input$cast_comparisons, as.character(input$cast_comparisons))})
+ 
+ ## Part 2: Used to create a series of reactive plots 
+ 
+ output$top_cast = renderPlot({
+    
+    if(input$cast_language == "both" & input$cast_type == "headliner")  {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>% 
+        filter(cast_type == "headliner") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>% 
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Headlining  Actors/Actresses", y = "Number of Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "English Speaking" & input$cast_type == "headliner") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(cast_type == "headliner") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Headlining  Actors/Actresses", y = "Number of English-Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "Non-English Speaking" & input$cast_type == "headliner") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(cast_type == "headliner") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "Non-English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Headlining Actors/Actresses", y = "Number of Non-English Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "both" & input$cast_type == "supporting cast")  {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>% 
+        filter(cast_type == "supporting cast") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>% 
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Supporting Actors/Actresses", y = "Number of Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "English Speaking" & input$cast_type == "supporting cast") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(cast_type == "supporting cast") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Supporting  Actors/Actresses", y = "Number of English-Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "Non-English Speaking" & input$cast_type == "supporting cast") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(cast_type == "supporting cast") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "Non-English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Supporting Actors/Actresses", y = "Number of Non-English Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "both" & input$cast_type == "both")  {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>% 
+        filter(genre == as.character(cast_n_director_genre_2())) %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>% 
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Actors/Actresses", y = "Number of Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "English Speaking" & input$cast_type == "both") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Actors/Actresses", y = "Number of English-Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    } else if (input$cast_language == "Non-English Speaking" & input$cast_type == "both") {
+      
+      netflix_genrexcountryxcast_df %>% 
+        filter(cast != "Unknown/No Cast") %>%
+        filter(genre == as.character(cast_n_director_genre_2())) %>%
+        mutate(
+          english_or_not = 
+            ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking",
+            ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+            ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+        ) %>% 
+        filter(country_type == "main country") %>%
+        filter(english_or_not == "Non-English Speaking") %>% 
+        group_by(cast) %>% 
+        summarise(count = n()) %>% 
+        arrange(desc(count)) %>%
+        filter(count > 1) %>%
+        top_n(5) %>% 
+        ggplot(aes(x = reorder(cast, count), y = count, fill = cast)) + 
+        geom_bar(stat = 'identity', color = 'black') + 
+        guides(fill = F) +
+        theme_classic() +
+        theme(
+          axis.text = element_text(color = 'black'),
+          plot.caption = element_text(color = 'black', hjust = 0)
+        ) + 
+        coord_flip() +
+        labs(x = "Top Actors/Actresses", y = "Number of Non-English Speaking Netflix Content", caption = "* Only actors with at least 2 credited roles on Netflix")
+      
+    }
+    
+  })
+  
+} 
+
+shinyApp(ui = ui, server = server)
+
+
