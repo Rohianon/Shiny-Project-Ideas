@@ -303,30 +303,18 @@ netflix = netflix %>%
 netflix_director_split = netflix %>% 
   separate(
     director, into = c("lead","assitant 1","assistant 2","assistant 3","assistant 4","assistant 5","assistant 6",
-    "assistant 7","assistant 8","assistant 9","assistant 10","assistant 11","assistant 12"), sep = ", "
-  ) %>% 
-  pivot_longer(
-    lead:`assistant 12`, names_to = "director_type", values_to = "director_name"
-  ) %>% filter(
-    !is.na(director_name)
-  ) %>% 
-  mutate(
-    director_type = ifelse(director_type != "lead", "assistant/guest", "lead")
-  )
+    "assistant 7","assistant 8","assistant 9","assistant 10","assistant 11","assistant 12"), sep = ", ") %>% 
+  pivot_longer(lead:`assistant 12`, names_to = "director_type", values_to = "director_name") %>% 
+  filter(!is.na(director_name)) %>% 
+  mutate(director_type = ifelse(director_type != "lead", "assistant/guest", "lead"))
 
 # Splitting by genre 
 
 netflix_genre_split = netflix %>% 
-  separate(
-    listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ","
-  ) %>% 
-  pivot_longer(
-    principal:tertiary, names_to = "listing_type", values_to = "genre"
-  ) %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
   filter(!is.na(genre)) %>% 
-  mutate(
-    listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary')
-  )
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
 
 netflix_genre_split$genre = str_trim(netflix_genre_split$genre, side = 'both')
 
@@ -342,29 +330,18 @@ netflix_cast_split = netflix %>%
     'cast member 35', 'cast member 36', 'cast member 37', 'cast member 38', 'cast member 39', 'cast member 40', 'cast member 41', 'cast member 42', 'cast member 43', 
     'cast member 44', 'cast member 45', 'cast member 46', 'cast member 47', 'cast member 48', 'cast member 49'), sep = ", "
   ) %>% 
-  pivot_longer(
-    headliner:`cast member 49`, names_to = "cast_type", values_to = 'cast'
-  ) %>% 
-  filter(
-    !is.na(cast)
-  ) %>% 
-  mutate(
-    cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast")
-  )
+  pivot_longer(headliner:`cast member 49`, names_to = "cast_type", values_to = 'cast') %>% 
+  filter(!is.na(cast)) %>% 
+  mutate(cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast"))
 
 # Splitting by Country 
 
 netflix_country_split = netflix %>% 
   separate(
     country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 'eighth country', 
-    'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ","
-  ) %>% 
-  pivot_longer(
-    `main country`:`twelfth country`, names_to = "country_type", values_to = "country_name"
-  )  %>% 
-  filter(
-    !is.na(country_name)
-  ) %>% 
+    'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ",") %>% 
+  pivot_longer(`main country`:`twelfth country`, names_to = "country_type", values_to = "country_name")  %>% 
+  filter(!is.na(country_name)) %>% 
   mutate(
     country_type = ifelse(country_type == "main country", 'main country', 'other country'), 
     country_name = ifelse(country_name == "", "Unknown Country", country_name)
@@ -373,4 +350,266 @@ netflix_country_split = netflix %>%
 netflix_country_split$country_name = str_trim(netflix_country_split$country_name, side = 'both')
 
 # For both country and genre, I've removed the potential white space that may exists when splitting up the data. 
+
+# To handle the description, we need to figure out the keywords there that would provide value in determining it's content.  Obviously there are a lot of words that are used 
+# to make the description grammatically correct, so those need to be filtered out (along with punctuation marks).
+
+netflix_description = netflix %>% mutate(description = gsub('[\\,.;:!?"]', "", description))
+
+netflix_description = netflix_description %>% mutate(description = stringi::stri_trans_general(description, "latin-ascii"))
+
+netflix_description$original_description = netflix_description$description
+
+netflix_description = netflix_description %>% unnest_tokens(output = word, input = description) %>% anti_join(stop_words, by = "word")
+
+colnames(netflix_description) = c("show_id", 'type', 'title', 'director', 'cast', 'country', 'date_added', 'release_year', 'rating', 'duration', 'listed_in', 'original_description', "keywords")
+
+netflix_description$keywords = str_trim(netflix_description$keywords, side = 'both')
+
+
+
+# STEP 3.4: The Pre-Processing - Making all of the data sets 
+
+# OK.... so YOU probably won't want to do this, but I went OCD on this in terms of figuring out all of the possible combinations of analysing this data.   
+
+# KEYWORDS and GENRE
+
+netflix_descriptionxgenre = netflix_description %>% 
+   separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+   pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+   filter(!is.na(genre)) %>% 
+   mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_descriptionxgenre$genre = str_trim(netflix_descriptionxgenre$genre, side = 'both')  
+
+
+#  KEYWORDS and LANGUAGE
+
+netflix_descriptionxlanguage = netflix_description %>% 
+  separate(
+    country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', 
+    "seventh country", 'eighth country', 'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ",") %>% 
+  pivot_longer(`main country`:`twelfth country`, names_to = "country_type", values_to = "country_name") %>% 
+  filter(!is.na(country_name)) %>% 
+  mutate(country_type = ifelse(country_type == "main country", 'main country', 'other country'), country_name = ifelse(country_name == "", "Unknown Country", country_name))
+  
+netflix_descriptionxlanguage$country_name = str_trim(netflix_descriptionxlanguage$country_name, side = 'both')
+
+netflix_descriptionxlanguage = netflix_descriptionxlanguage %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not)) # To deal with those countries I literally have no idea about...
+ 
+ 
+# DIRECTOR and CAST 
+ 
+ netflix_castxdirector_df = netflix_director_split %>%  
+  separate(
+    cast, into = c("headliner", 'cast member 1', 'cast member 2', 'cast member 3', 'cast member 4', 'cast member 5', 'cast member 6', 'cast member 7', 
+    'cast member 8', 'cast member 9', 'cast member 10', 'cast member 11', 'cast member 12', 'cast member 13', 'cast member 14', 'cast member 15', 'cast member 16', 
+    'cast member 17', 'cast member 18', 'cast member 19', 'cast member 20', 'cast member 21', 'cast member 22', 'cast member 23', 'cast member 24', 'cast member 25', 
+    'cast member 26', 'cast member 27', 'cast member 28', 'cast member 29', 'cast member 30', 'cast member 31', 'cast member 32', 'cast member 33', 'cast member 34', 
+    'cast member 35', 'cast member 36', 'cast member 37', 'cast member 38', 'cast member 39', 'cast member 40', 'cast member 41', 'cast member 42', 'cast member 43', 
+    'cast member 44', 'cast member 45', 'cast member 46', 'cast member 47', 'cast member 48', 'cast member 49'), sep = ", ") %>% 
+  pivot_longer(headliner:`cast member 49`, names_to = "cast_type", values_to = 'cast') %>% 
+  filter(!is.na(cast)) %>% 
+  mutate(cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast"))
+
+
+# DIRECTOR and GENRE
+  
+netflix_genrexdirector_df = netflix_director_split %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_genrexdirector_df$genre = str_trim(netflix_genrexdirector_df$genre, side = 'both')
+  
+  
+# DIRECTOR and LANGUAGE  
+  
+netflix_countryxdirector_df = netflix_director_split %>%  
+   separate(country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 'eighth country', 
+    'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ",") %>% 
+  pivot_longer(`main country`:`twelfth country`, names_to = "country_type", values_to = "country_name")  %>% 
+  filter(!is.na(country_name)) %>% 
+  mutate(
+    country_type = ifelse(country_type == "main country", 'main country', 'other country'), 
+    country_name = ifelse(country_name == "", "Unknown Country", country_name)
+  )  
+ 
+netflix_countryxdirector_df$country_name = str_trim(netflix_countryxdirector_df$country_name, side = 'both')
+
+netflix_countryxdirector_df = netflix_director_split %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not)) # To deal with those countries I literally have no idea about...
+  
+# CAST and GENRE
+ 
+ netflix_genrexcast_df = netflix_cast_split %>% 
+    separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+    pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+    filter(!is.na(genre)) %>% 
+    mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_genrexcast_df$genre = str_trim(netflix_genrexcast_df$genre, side = 'both')
+
+# CAST and LANGUAGE 
+
+netflix_countryxcast_df = netflix_cast_split %>% 
+  separate(
+    country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 'eighth country', '
+    nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ",") %>% 
+  pivot_longer(`main country`:`twelfth country`, names_to = "country_type", values_to = "country_name")  %>% 
+  filter(!is.na(country_name)) %>% 
+  mutate(country_type = ifelse(country_type == "main country", 'main country', 'other country'), country_name = ifelse(country_name == "", "Unknown Country", country_name)) 
+ 
+ netflix_countryxcast_df$country_name = str_trim(netflix_countryxcast_df$country_name, side = 'both')
+ 
+ netflix_countryxcast_df = netflix_countryxcast_df %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not))    
+  
+
+# LANGUAGE and GENRE
+
+netflix_genresxcountry_df = netflix_country_split %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+  
+netflix_genresxcountry_df = netflix_genresxcountry_df %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not))
+
+netflix_genresxcountry_df$genre = str_trim(netflix_genresxcountry_df$genre, side = 'both') 
+
+
+# DIRECTOR, CAST and LANGUAGE
+
+netflix_countryxcastxdirector_df = netflix_castxdirector_df %>% 
+  separate(country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 
+    'eighth country', 'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ",") %>% 
+  pivot_longer(`main country`:`twelfth country`, names_to = "country_type", values_to = "country_name")  %>% 
+  filter(!is.na(country_name)) %>% 
+  mutate(
+    country_type = ifelse(country_type == "main country", 'main country', 'other country'), 
+    country_name = ifelse(country_name == "", "Unknown Country", country_name)
+  ) 
+
+netflix_countryxcastxdirector_df$country_name = str_trim(netflix_countryxcastxdirector_df$country_name, side = "both")
+
+netflix_countryxcastxdirector_df = netflix_countryxcastxdirector_df %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not))
+
+
+# DIRECTOR, CAST, GENRES
+
+netflix_genrexcastxdirector_df = netflix_castxdirector_df %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_genrexcastxdirector_df$genre = str_trim(netflix_genrexcastxdirector_df$genre, side = 'both')
+  
+
+# DIRECTOR, LANGUAGE and GENRE 
+
+netflix_genrexcountryxdirector_df = netflix_countryxdirector_df %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_genrexcountryxdirector_df$genre = str_trim(netflix_genrexcountryxdirector_df$genre, side = 'both')
+
+
+# CAST, LANGUAGE, GENRE 
+
+netflix_genrexcountryxcast_df = netflix_countryxcast_df %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+ 
+netflix_genrexcountryxcast_df$genre = str_trim(netflix_genrexcountryxcast_df$genre, side = 'both')
+
+
+# CAST, LANGUAGE, DIRECTOR and GENRE 
+
+netflix_genrexcountryxcastxdirector_df = netflix_countryxcastxdirector_df %>% 
+  separate(listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ",") %>% 
+  pivot_longer(principal:tertiary, names_to = "listing_type", values_to = "genre") %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary'))
+
+netflix_genrexcountryxcastxdirector_df$genre = str_trim(netflix_genrexcountryxcastxdirector_df$genre, side = 'both')
+
+
+
+
+
 
