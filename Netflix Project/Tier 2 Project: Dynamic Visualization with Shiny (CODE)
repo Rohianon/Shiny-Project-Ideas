@@ -1,2 +1,21 @@
 # OK in this section, we'll show how you can go about doing this using that same data set.  
-# Let's say that this time, I want to be able to dynamically show off 
+# Let's say that this time, I want to be able to dynamically show off whereby I want a quick page showing off the cast variable.  
+# Specifically, I want to be able to address it in terms of (a) Credited Cast Content vs. Non-Credited Cast Content, (b) Overall vs. Headlining vs. Supporting Cast 
+
+# STEP 1: Get basic skeleton
+
+ui = fluidPage({
+
+  navlistPanel(
+    tabPanel(
+      title = "All about the cast"
+    )
+  )
+
+})
+
+server = function(input, output) {}
+
+shinyApp(ui = ui, server = server) 
+
+# STEP 2: Create the UI Section in a manner that presents an organization that matches the projected outlook 
