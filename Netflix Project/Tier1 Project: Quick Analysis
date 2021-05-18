@@ -108,6 +108,80 @@ netflix_director_split %>%
   # Turns out to be Marcus Raboy 
   
   
- # ANSWERING Q.2 - Most prevalent 
+ # ANSWERING Q.2 - Most prevalent Genre + Content Rating
+ 
+ # Again this is just a matter of choosing the most appropriate dataframe that we have.  In the case of genre, we can just do the following:
+ 
+ netflix_genre_split %>% 
+  group_by(genre) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(1)
+  
+# This turns out to be International Movies. 
+  
+# If I want to visualize this, all I'll need to do is this
+  
+netflix_genre_split %>% 
+  group_by(genre) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(10) %>% 
+  ggplot(
+    aes(x = reorder(x = genre, count), y = count, fill = genre)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top Genres on Netflix", y = "Number of Netflix Content") + 
+  coord_flip()
+  
+ # If you are interested in splitting this up in terms of hierarchy of keywords where you recognize content isn't going to be defined by a single genre.  Here we can go with:
+ # listing_type:
+ 
+ netflix_genre_split %>% 
+  group_by(genre, listing_type) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(10) %>% 
+  ggplot(
+    aes(x = reorder(x = genre, count), y = count, fill = genre)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top Genres on Netflix", y = "Number of Netflix Content") + 
+  coord_flip() + 
+  facet_wrap(vars(listing_type))
+  
+  # Turns out that while there are a lot of international movies, the majority of them are principally listed as Dramas. 
+  
+netflix %>% 
+    group_by(rating) %>% 
+    summarise(count = n()) %>% 
+    arrange(desc(count)) %>% 
+    ggplot(
+    aes(x = reorder(x = rating, count), y = count, fill = rating)
+    ) + 
+    geom_bar(stat = 'identity', color = 'black') + 
+    theme_classic() +
+    guides(fill = F) +
+    theme(
+      axis.text = element_text(color = 'black')
+    ) + 
+    labs(x = "Top Content Rating on Netflix", y = "Number of Netflix Content") + 
+    coord_flip()
+ 
+ # This turns out to be TV-MA (so alot of 17+ content)
+ 
+ 
+ # ANSWERING Q.3: ENGLISH vs. NON-ENGLISH BREAKDOWN
+ 
  
  
