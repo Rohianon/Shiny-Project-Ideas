@@ -452,7 +452,7 @@ netflix_countryxdirector_df = netflix_director_split %>%
  
 netflix_countryxdirector_df$country_name = str_trim(netflix_countryxdirector_df$country_name, side = 'both')
 
-netflix_countryxdirector_df = netflix_director_split %>% 
+netflix_countryxdirector_df = netflix_countryxdirector_df %>% 
   mutate(
     english_or_not = 
       ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
