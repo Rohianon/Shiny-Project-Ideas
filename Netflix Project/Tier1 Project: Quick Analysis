@@ -139,8 +139,8 @@ netflix_genre_split %>%
   labs(x = "Top Genres on Netflix", y = "Number of Netflix Content") + 
   coord_flip()
   
- # If you are interested in splitting this up in terms of hierarchy of keywords where you recognize content isn't going to be defined by a single genre.  Here we can go with:
- # listing_type:
+# If you are interested in splitting this up in terms of hierarchy of keywords where you recognize content isn't going to be defined by a single genre.  Here we can go with:
+# listing_type:
  
  netflix_genre_split %>% 
   group_by(genre, listing_type) %>% 
@@ -160,7 +160,7 @@ netflix_genre_split %>%
   coord_flip() + 
   facet_wrap(vars(listing_type))
   
-  # Turns out that while there are a lot of international movies, the majority of them are principally listed as Dramas. 
+# Turns out that while there are a lot of international movies, the majority of them are principally listed as Dramas. 
   
 netflix %>% 
     group_by(rating) %>% 
@@ -178,10 +178,76 @@ netflix %>%
     labs(x = "Top Content Rating on Netflix", y = "Number of Netflix Content") + 
     coord_flip()
  
- # This turns out to be TV-MA (so alot of 17+ content)
+# This turns out to be TV-MA (so alot of 17+ content)
  
  
- # ANSWERING Q.3: ENGLISH vs. NON-ENGLISH BREAKDOWN
+# ANSWERING Q.3: ENGLISH vs. NON-ENGLISH BREAKDOWN
  
+# Let's make this a bit more fancy via pie charts 
  
+
+
+netflix_country_split %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>%
+  filter(!is.na(english_or_not)) %>% 
+  group_by(english_or_not) %>% 
+  summarise(count = n()) %>% 
+  ggplot(
+    aes(x = "", y = count, fill = english_or_not)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  geom_text(
+    aes(label = paste0(round((count/sum(count))*100, 2), "%")), 
+    position = position_stack(vjust = 0.5), 
+    color = "white", 
+    fontface = "bold",
+    size = 15
+  )+ 
+  labs(x = "", y = "", title = "Breakdown of Netflix Content by Language") + 
+  scale_fill_manual(values = c("English Speaking" = "firebrick2", "Non-English Speaking" = "slateblue3")) +
+  coord_polar(
+    theta = 'y', 
+    start = 0
+  ) + 
+  theme_classic() +
+  theme(
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    legend.title = element_blank(),
+    plot.title = element_text(size = 25, hjust = 0.5),
+    legend.text = element_text(size = 20)
+  )
+  
+# So this turns out to be an almost 50:50 split.  Let's see if this is significantly different or not...
  
+count_check = netflix_country_split %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>%
+  filter(!is.na(english_or_not)) %>% 
+  group_by(english_or_not) %>% 
+  summarise(count = n()) 
+ 
+chisq.test(as.table(count_check$count), correct = T) # p = 0.347, x^2 = 0.885 .... so not significant. 
