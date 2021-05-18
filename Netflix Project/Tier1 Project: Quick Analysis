@@ -1,0 +1,113 @@
+# Building off of what we already have made earlier, you'll just need to use this section to answer a few key things like: 
+# 1) Who's the top actor/director in terms of credited Netflix Content? 
+# 2) What's the most prevalent genre or content rating 
+# 3) What's the breakdown of English-Speaking and Non-English Speaking Content and if this is statistically significant 
+
+# Obviously there are much more questions you can answer, but these three are a start. 
+
+# ANSWERING Q.1 - TOP ACTOR & DIRECTOR 
+
+netflix_cast_split %>%  # Contains data for both actors + directors already split up
+  filter(cast != "Unknown/No Cast") %>% 
+  group_by(cast) %>% 
+  summarise(count = n()) %>%  
+  arrange(desc(count)) %>%  # arrange in descending order
+  top_n(100) %>% 
+  slice(1) # Takes the first option of the already subsetted data frame
+
+# This should give you Anupam Kher as the most credited actor based on Netflix content 
+# However, if you want to visualize this, we can go about it like this: 
+
+netflix_cast_split %>% 
+  filter(cast != "Unknown/No Cast") %>% 
+  group_by(cast) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(20) %>% 
+  ggplot(
+    aes(x = reorder(x = cast, count), y = count, fill = cast)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top credited actors on Netflix", y = "Number of credited content") + 
+  coord_flip()
+  
+  # If I want to approach this based on language, I'll just use a different data set and go from there
+  
+# ENGLISH ONLY 
+  
+netflix_countryxcast_df %>% 
+  filter(english_or_not == "English Speaking") %>% 
+  filter(cast != "Unknown/No Cast") %>% 
+  group_by(cast) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(20) %>% 
+  ggplot(
+    aes(x = reorder(x = cast, count), y = count, fill = cast)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top credited actors on Netflix", y = "Number of English-speaking credited content") + 
+  coord_flip() 
+  
+  # This turns out to be Andrea Libman 
+
+
+# For directors, we can repeat the process
+
+netflix_director_split %>% 
+  filter(director_name != "Unknown/No Director(s)") %>% 
+  group_by(director_name) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(20) %>% 
+  ggplot(
+    aes(x = reorder(x = director_name, count), y = count, fill = director_name)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top credited directors on Netflix", y = "Number of credited content") + 
+  coord_flip()
+  
+ # Turns out to be Jan Sutter
+ 
+ # For English Content 
+ 
+ netflix_countryxdirector_df %>% 
+  filter(english_or_not == "English Speaking") %>% 
+  filter(director_name != "Unknown/No Director(s)") %>% 
+  group_by(director_name) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(20) %>% 
+  ggplot(
+    aes(x = reorder(x = director_name, count), y = count, fill = director_name)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black')
+  ) + 
+  labs(x = "Top credited directors on Netflix", y = "Number of English-Speaking credited content") + 
+  coord_flip()
+  
+  # Turns out to be Marcus Raboy 
+  
+  
+ # ANSWERING Q.2 - Most prevalent 
+ 
+ 
