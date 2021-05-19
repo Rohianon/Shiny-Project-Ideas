@@ -5,8 +5,11 @@
 
 # STEP 1: Create the UI Section in a manner that presents an organization that matches the projected outlook 
 
+library(bslib)
+
 ui = fluidPage(
-      tags$h1("All About the Cast"), 
+      theme = bs_theme(bootswatch = "simplex"),
+      wellPanel(tags$h1("All About the Cast")), 
       tags$div(
         HTML("<body>
                 <p style = 'font-size: 120%; text-align: justify'> 
