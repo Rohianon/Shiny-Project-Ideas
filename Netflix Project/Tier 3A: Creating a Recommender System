@@ -1,1 +1,390 @@
-# So going into a more advance project, I want to be able to use this data to be able to facilitate 
+# So going into a more advance project, you want to be able to show off a more advance skill set with respect to the data.  This will be the time to add in some machine 
+# learning techniques to get some kind of functionality from it.  Seeing as I'm working with Netflix data, an easy way to do this is to make your own version of a recommender system. 
+# This is how I did mines: 
+
+
+# We'll work on the assumption that you'll build off of the earlier stuff. 
+
+
+# STEP 1: Create a data frame that contains the all of the variables that you care on influencing your decision-making.  
+# You can do whatever here, but I will work on using the following: director, cast, genre, language/country and content rating. 
+# ALSO INCLUDE THE TITLE + ID VARIABLE .... will need this for the purpose of referencing. 
+
+netflix_for_recommend = netflix %>% select(show_id, title, director, cast, listed_in, country, rating, description)
+
+# Use a series of pivot_longer() and separate() to break-up the multi-element texts for each variable
+
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    director, into = c("lead","assitant 1","assistant 2","assistant 3","assistant 4","assistant 5","assistant 6","assistant 7","assistant 8",
+    "assistant 9","assistant 10","assistant 11","assistant 12"), sep = ", "
+  ) %>% 
+  pivot_longer(
+    lead:`assistant 12`, names_to = "director_type", values_to = "director_name"
+  ) %>% filter(
+    !is.na(director_name)
+  ) %>% 
+  mutate(
+    director_type = ifelse(director_type != "lead", "assistant/guest", "lead")
+  )
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 
+    'eighth country', 'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ","
+  ) %>% 
+  pivot_longer(
+    `main country`:`twelfth country`, names_to = "country_type", values_to = "country_name"
+  )  %>% 
+  filter(
+    !is.na(country_name)
+  ) %>% 
+  mutate(
+    country_type = ifelse(country_type == "main country", 'main country', 'other country'), 
+    country_name = ifelse(country_name == "", "Unknown Country", country_name)
+  ) 
+  
+ netflix_for_recommend  = netflix_for_recommend %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(
+    !is.na(english_or_not) 
+  )
+ 
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ","
+  ) %>% 
+  pivot_longer(
+    principal:tertiary, names_to = "listing_type", values_to = "genre"
+  ) %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(
+    listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary')
+  )
+  
+ netflix_for_recommend = netflix_for_recommend %>%  
+  separate(
+    cast, into = c("headliner", 'cast member 1', 'cast member 2', 'cast member 3', 'cast member 4', 'cast member 5', 'cast member 6', 'cast member 7', 
+    'cast member 8', 'cast member 9', 'cast member 10', 'cast member 11', 'cast member 12', 'cast member 13', 'cast member 14', 'cast member 15', 'cast member 16', 
+    'cast member 17', 'cast member 18', 'cast member 19', 'cast member 20', 'cast member 21', 'cast member 22', 'cast member 23', 'cast member 24', 'cast member 25', 
+    'cast member 26', 'cast member 27', 'cast member 28', 'cast member 29', 'cast member 30', 'cast member 31', 'cast member 32', 'cast member 33', 'cast member 34', 
+    'cast member 35', 'cast member 36', 'cast member 37', 'cast member 38', 'cast member 39', 'cast member 40', 'cast member 41', 'cast member 42', 'cast member 43', 
+    'cast member 44', 'cast member 45', 'cast member 46', 'cast member 47', 'cast member 48', 'cast member 49'), sep = ", "
+  ) %>% 
+  pivot_longer(
+    headliner:`cast member 49`, names_to = "cast_type", values_to = 'cast'
+  ) %>% 
+  filter(
+    !is.na(cast)
+  ) %>% 
+  mutate(
+  ) 
+  
+    cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast")
+  
+  
+ # STEP 2: Be way more specific with what you want to play a factor in deciding recommendations.  
+ # You can do whatever here, but thinking more logically...I'm going with the fact that (a) the supporting cast isn't going to drive choosing content over the top-billed actor
+ # (b) the same can be said with respect to lead director vs. assistant director, (c) since there are many classifications for genres for a single content, it can artificially
+ # pick up something that shouldn't match, so just include the main content genre (in this case the first listed genre) 
+ 
+ netflix_for_recommend = netflix_for_recommend %>% 
+  filter(cast_type == "headliner") %>% 
+  filter(director_type == "lead") %>% 
+  filter(listing_type == "principal") %>%
+  filter(!is.na(english_or_not)) %>% 
+  select(show_id, type, title, rating, director_name, country_name, english_or_not, genre, cast, description)
+ 
+ 
+# STEP 3: Convert the variables into categorical variables (aka. factor type) since it's all just characters now
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  mutate(
+    type = as.factor(type),
+    rating = as.factor(rating), 
+    director_name = as.factor(director_name), 
+    cast = as.factor(cast),
+    genre = as.factor(genre),
+    country_name = as.factor(country_name), 
+    english_or_not = as.factor(english_or_not)
+  )
+  
+  
+# STEP 4: Create the evaluation metric.... so unlike Python, you can't just use a dataframe to implement an evaluation of similarity.  You actually have to do this in a matrix. 
+# So I need to first create a matrix, then input a metric and then integrate this back into a dataframe that can be used for subsetting.  
+
+# firstly, subset this reference dataframe to include ONLY THE EVALUATION VARIABLES 
+
+netflix_select_features = netflix_for_recommend %>% select(type, english_or_not, rating, genre, director_name, cast)
+
+# Now I'll create a matrix that would be used to evaluate the similarity (well in this case the dis-similarity) of each entry by given features
+# NOTE: in my case, I'll be using Gower's coefficient which allows for me to put on some weighting aspect to each of my selected variables to indicate based on my own choice. 
+# Obviously figure out which actually matters more in relation to the other, but I took some liberties here and suggested that the influence of the headlining cast member is 
+# 2x that of the director in driving recommendation and that whether the content is in English or Not has 2x the impact over whether something is a TV series or a Movie. 
+# As for rating and genre, they have equal weighting with each other but are greater than content type and director_name but less than language and headlining cast member. 
+
+dissimilarity = as.matrix(daisy(netflix_selector_features, metric = "gower"), weight(0.5, 2, 1, 1, 0.5, 2)) # possible with the cluster library 
+ 
+row.names(dissimilarity) = netflix_for_recommend$show_id # To add row names for ID purposes 
+colnames(dissimilarity) = netflix_for_recommend$show_id  # To add column names for ID purposes 
+
+
+# STEP 5: Create a test section for trouble shooting along the way
+
+test_selection = netflix_for_recommend %>% filter(title == "Sense8" | title == "Adam Ruins Everything" | title == "The Waterboy")
+
+# I've added a ranking element to include an element of weighting as it pertains to listing your favorite content... you can play with the values here, but be mindful of the 
+# order of magnitude since we're working with small number here. 
+
+# I'll just say that "Sense8" is my favorite here, followed by "Adam Ruins Everything" and then "The Waterboy"
+
+test_selection = test_selection %>% mutate(ranking = ifelse(title == "Sense8", 1.1, ifelse(title == "Adam Ruins Everything", 1.05, 1)))
+ 
+
+# STEP 6: Convert the matrix into a dataframe and enable the selection process
+
+# Get show_id of the test selection and use it to subset the soon-to-be converted dissimilarity matrix
+
+select_data_indices = which(colnames(dissimilarity) %in% test_selection$show_id)
+
+# turn dissimilarity matrix into a dataframe that contains ONLY test_selected items 
+
+test_selection_result_data = data.frame(
+        dissimilarity[, select_data_indices], 
+        recommended_netflix_content = row.names(dissimilarity) # I need a way to list all of the existing content in reference dataframe for selection purpose
+        )
+       
+something_here = test_selection_result_data %>% 
+  pivot_longer(cols = c(-"recommended_netflix_content"),  # This is to wrangle the dataframe into something that contains the columns for content_id, dissimilarity metric, 
+               names_to = "watched_content",              # and what that particular metric score is related to the test selection (there should be like 3 for every content)
+               values_to = "dissimilarity") %>% 
+  left_join(test_selection, by = c("watched_content" = "show_id")) %>%  # combine the test_selection data frame to this new data frame to get that ranking score for favorites 
+  filter(recommended_netflix_content != watched_content) %>%            # Remove the possible inclusion of your favorites from the selection pool 
+  mutate(
+    similarity = 1-dissimilarity,     # Need a way to make the scoring make more obvious sense that isn't going to be interpreted as a double-negative, so just take the inverse
+    weighted_similarity = similarity*ranking        # Make the final metric that would be used in selection where it incorporates the ranking of favorites in selection 
+  ) %>% 
+  group_by(recommended_netflix_content) %>%       # group by selection pool title 
+  arrange(desc(weighted_similarity)) %>% 
+  slice(1) %>%                                    # takes the first listed score for each selection option (which should be the highest possible weighted score) 
+  arrange(desc(weighted_similarity))              # Arrange everything in order of highest weighted score 
+
+
+# Get a subset of that new data frame for your choices, let's just go with 5 for now & combine this with the reference data frame (netflix_for_recommend) to get that title 
+# since everything is just a show_id at the moment. 
+
+top_recommendations = head(something_here , 5)
+
+top_recommentations = top_recommentations %>% 
+      left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% 
+      select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, 
+             english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+
+
+recommendations = top_5_recommentation$title.y # Here are a list of titles. 
+
+
+# SO THIS SHOULD WORK.......NEXT STEP IS TO AUTOMATE THIS 
+
+# Actually getting the recommendations 
+
+getting_recommendations = function(
+    selection_data, # The subset of the reference data frame that includes a ranking metric
+    matrix, # The dissimilarity matrix
+    netflix_for_recommend, # This is the reference dataframe 
+    n_to_recommend # should be a number 
+        ) {
+  
+    n_to_recommend = as.numeric(n_to_recommend)
+    select_indices = which(colnames(matrix) %in% netflix_for_recommend$show_id)
+    
+    getting_dataframe = data.frame(
+                            matrix[, select_indices], 
+                            recommended_netflix_content = row.names(matrix)
+                            )
+                         
+    recommendation_dataframe = getting_dataframe %>% 
+          pivot_longer(cols = c(-"recommended_netflix_content"), names_to = "watched_content", values_to = "dissimilarity") %>% 
+          left_join(selection_data, by =  c("watched_content" = "show_id")) %>% 
+          filter(recommended_netflix_content != watched_content) %>%
+          mutate(
+            similarity = 1-dissimilarity, 
+            weighted_similarity = similarity*ranking
+          ) %>% 
+          group_by(recommended_netflix_content) %>%
+          arrange(desc(weighted_similarity)) %>% 
+          slice(1) %>% 
+          arrange(desc(weighted_similarity))
+         
+  top_selections = head(recommendation_dataframe, n_to_recommend)
+  
+  top_selections = top_selections %>% 
+                left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% 
+                select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, 
+                english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+  
+  recommendations = top_selections$title.y 
+  
+  for(i in recommendations) {
+    print(paste("Based on your choices, we suggest you check out",i))
+  }
+
+}
+
+
+# While it's cool that I have this automated, I want this intereactive.  So let's make a shiny app for this. 
+# Again going to assume you're going to do everything from the tier 1 project. 
+
+library(bslib)
+
+ui = fluidPage(
+  theme = bs_theme(bootswatch = "simplex"),
+  navlistPanel(
+    "Tier 3 Project: A Content-Based Recommender System in R",
+    tabPanel(
+      title = "Find out what to watch next!",
+      
+      tags$div(
+        HTML("<body>
+                <p style = 'font-size: 120%; text-align: justify'> 
+                    Ever wanted to have a complete stranger figure out what you should watch on Netflix based on your current favorites on Netflix.  
+                    Well here's the app for you.  Who needs Rotten Tomatoes, IMDB or other vetted critique source.  Type in some of your favorite TV series or movies on Netflix and this thing will try to put out some recommendations for you. 
+                    Give it a shot! 
+                </p>
+             </body>")
+      ),
+      tags$br(),
+      fluidRow(
+        column(width = 4, 
+               wellPanel(
+                 helpText("In this section, we'll need you to enter the title of 3 TV series or Movies on Netflix that you're into in a ranked fashion.  We'll use this as a benchmark to figure out what sort of other stuff on Netflix to recomment to you.  As a reminder, you'll need to be mindful of spelling and case."),
+                 tags$br(),
+                 textInput(inputId = "entry_1", 
+                           label = "Put down the title for your top-ranked Netflix content here."),
+                 textOutput(outputId = "entry_1_check"),
+                 tags$br(),
+                 textInput(inputId = "entry_2", 
+                           label = "Put down the title for your second-ranked Netflix content here."),
+                 textOutput(outputId = "entry_2_check"),
+                 tags$br(),
+                 textInput(inputId = "entry_3", 
+                           label = "Put down the title for your third-ranked Netflix content here."),
+                 textOutput(outputId = "entry_3_check"),
+                 tags$br(), 
+                 sliderInput(inputId = "n_recommend", label = "How many recommendations do you want", min = 1, max = 100, value = 5, step = 1),
+               )), 
+        column(width = 8, tableOutput(outputId = "Recommendations"))
+      )
+      
+      
+    ) # ends the tabPanel
+  ) # ends navlistPanel
+) # end fluidpage
+
+
+server = function(input, output) {
+ 
+# Used to check if the entries are valid or NOT
+  
+  output$entry_1_check = renderText({
+    
+    if (input$entry_1 %in% netflix_for_recommend$title) {
+      as.character("Yes this title can be used")
+    } else {
+      as.character("Something went wrong here.  Either there was a mistake in the entry (spelling or case-issue) or this isn't available in what I used in my current Netflix data set.")
+    }
+    
+  })
+   
+  output$entry_2_check = renderText({
+    
+    if (input$entry_2 %in% netflix_for_recommend$title) {
+      as.character("Yes this title can be used")
+    } else {
+      as.character("Something went wrong here.  Either there was a mistake in the entry (spelling or case-issue) or this isn't available in what I used in my current Netflix data set.")
+    }
+    
+  })
+  
+  output$entry_3_check = renderText({
+    
+    if (input$entry_3 %in% netflix_for_recommend$title) {
+      as.character("Yes this title can be used")
+    } else {
+      as.character("Something went wrong here.  Either there was a mistake in the entry (spelling or case-issue) or this isn't available in what I used in my current Netflix data set.")
+    }
+    
+  })
+  
+  
+  
+# Create a thing that subsets the netflix_recommender_dataset to be used. Plan to use this as the input for the actual recommender system
+  
+  subset_dataset = reactive({
+    netflix_for_recommend %>% 
+      filter(title == input$entry_1 | title == input$entry_2 | title == input$entry_3) %>% 
+      mutate(ranking = ifelse(title == input$entry_1, 1.015, ifelse(title == input$entry_2, 1.010, 1.005)))
+  })
+  
+# Make the F**KING RECOMMENDER 
+  
+  recommending = reactive({
+    
+    number_of_picks = as.numeric(input$n_recommend)
+    placeholder_selection_data= subset_dataset()
+    column_1 = netflix_for_recommend$show_id[netflix_for_recommend$title == as.character(input$entry_1)]
+    column_2 = netflix_for_recommend$show_id[netflix_for_recommend$title == as.character(input$entry_2)]
+    column_3 = netflix_for_recommend$show_id[netflix_for_recommend$title == as.character(input$entry_3)]
+    
+    selected_indices = which(colnames(dissimilarity) %in% placeholder_selection_data$show_id)
+    getting_dataframe = data.frame(dissimilarity[, selected_indices], recommended_netflix_content = row.names(dissimilarity))
+    
+    recommendation_data = getting_dataframe %>% 
+      pivot_longer(
+        cols = c(column_1, column_2, column_3), 
+        values_to = "dissimilarity", 
+        names_to = "watched_content"
+      ) %>% 
+      left_join(placeholder_selection_data, by =  c("watched_content" = "show_id")) %>% 
+      filter(recommended_netflix_content != watched_content) %>%
+      mutate(
+        similarity = 1-dissimilarity, 
+        weighted_similarity = similarity*ranking
+        ) %>% 
+      group_by(recommended_netflix_content) %>% 
+      arrange(desc(weighted_similarity)) %>% 
+      slice(1) %>% 
+      arrange(desc(weighted_similarity))
+    
+    top_recommendations = head(recommendation_data, number_of_picks)
+    
+    top_recommendations = top_recommendations %>% 
+      left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id"))
+    
+    top_recommendations = top_recommendations %>% left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+    
+    selection = top_recommendations %>% select(title.y, recommended_netflix_content, weighted_similarity, description.y)
+    colnames(selection) = c("Suggested Titles", "Show Id", "Weighted Similarity Score", "Description")
+    selection 
+  })
+  
+  output$Recommendations = renderTable({recommending()})
+  
+}  
+
+shinyApp(ui = ui, server = server)
+
+
