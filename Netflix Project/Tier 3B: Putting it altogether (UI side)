@@ -347,7 +347,7 @@ ui = fluidPage(
 		),  # Ends tabPanel 6
 
 		tabPanel(
-			title = "Find out what to watch next!",
+			title = "FIND OUT WHAT TO WATCH NEXT!",
       
       			tags$div(
         			HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
