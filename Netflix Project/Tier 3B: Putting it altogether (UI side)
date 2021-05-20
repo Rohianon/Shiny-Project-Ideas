@@ -86,7 +86,7 @@ ui = fluidPage(
           		       wellPanel(uiOutput(outputId = "actual_interaction_variable")))
       			),
 	      tags$br(),
-      	      plotOutput(outputId = "content_chart", width = "1000px", height = "700px")
+      	      plotOutput(outputId = "content_chart", height = "700px")
       
 		
 		),   # Ends tabPanel 2
