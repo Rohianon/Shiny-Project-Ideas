@@ -1,0 +1,384 @@
+ui = fluidPage(
+
+	tags$div(
+		HTML("<body> <header style = 'text-align: center;'> <h1 style = 'font-size: 60px'> <strong> Detailed Look into Netflix Content by a Very Bored Person </strong> </h1> </header> </body>")
+	 ),
+	
+         tags$div(
+		HTML("<body> <header style = 'text-align: center;'> <h5 style = 'font-size: 35px'> <strong> By Michael Hoang </strong> </h5> </header> </body>")
+	 ),
+	 
+	 navlistPanel(
+	
+	    "Sections", 
+	     
+	    tabPanel(
+		title = "INTRODUCTION",
+		tags$div(
+			HTML("<body> <p style = 'font-size: 140%; text-align: justify'>
+					With all of the public health restrictions and social distance practice, it does not come as a big surprise to see a 
+					<a href = 'https://www2.deloitte.com/us/en/insights/industry/technology/digital-media-trends-consumption-habits-survey/summary.html'> notable uptick in the amount of consumption of certain digital media content</a> 
+					as we move past this trying time.  Sure, you could take the opportunity to listen to the entireity of 
+					<a href = 'https://en.wikipedia.org/wiki/The_Dark_Side_of_the_Moon'>Pink Floyd's Dark side of the Moon </a> or 
+					<a href = 'https://en.wikipedia.org/wiki/Paranoid_(album)'>Black Sabbath's Panaoid </a> after smoking a joint like a 17-year old living in the early 70's, 
+					but I figured it would most likely be binge watching a bunch of TV shows and movies on one of the many streamining services available to us.  
+					While there are a number of different streaming options available, the most noted one of these 
+					is <a href = 'http://www.netflix.com'> Netflix </a>.
+			     </p> </body>")
+		),
+		
+		tags$br(),
+		fluidRow(
+			column(width = 5, tags$img(src = "https://i.redd.it/x79u3xi98o111.jpg", width = "500 px", height = "400px")), 
+		        column(width = 5, tags$img(src = "https://live.staticflickr.com/644/31081359404_388697ea08_b.jpg", width = "500 px", height = "400px"), offset = 1)
+		), 
+		tags$div(
+			HTML("<body> <p style = 'font-size: 100%; text-align: center'>
+				<i> Whether you're Jack Nicholson or someone working in the Gig economy, you've got the right idea about how to unwind in these crazy times. </i>
+			     </p> </body>")
+		),		
+		tags$br(),
+		tags$div(
+          		HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
+			              While I wouldn't say binging on streaming content has been the sole thing that I have done, I would say that I did watch a lot of it. 
+				      What I would say about Netflix's content is that it's very <i> interesting </i>.  
+                                      Like there's a mix bag of the good, the bad and the downright weird. In any case, it would be interesting to see a breakdown of the various 
+                                      content that's actually on Netflix.  So why not show what Netflix has to offer through the use of Shiny.  Using data available 
+                                      from <a href = 'https://www.kaggle.com/shivamb/netflix-shows'>Kaggle</a>, let's look at a breakdown of the various content available on 
+                                      Netflix (as of 2019) across different groupings.  
+			     </p> </body>")
+        	), 
+		tags$br(),
+		tags$div(
+			HTML("<body> <p style = 'font-size: 140%; text-align: justify'>
+					What's included here is a breakdown of Netflix content by content type, language (English vs. Non-English), genre, content rating, cast, director and 
+					key words in the description.  Using these variables, I'll cap off with a recommender to suggest some content on Netflix based on your favourite Netflix content. 
+					So, let's check this out. 	
+			     </p> </body>")
+		)
+		),  # Ends tabPanel 1
+	    tabPanel(
+		
+		title = "CONTENT TYPE", 
+      		tags$div(
+			HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
+					In this section, we are breaking down the kind of content that is available on Netflix based on the type of content 
+					(i.e., is it a movie/feature or a TV series?).  If you are seeing this now as it is, you will notice that we have a general breakdown of 
+					Netflix content being mainly in the form of movies vs. TV series.  However, we can go much more granular by observing the interaction with 
+					other variables of interest like content rating, genre, English vs. Non-English content.  Check it out below!
+			     </p> </body>")),
+      		tags$br(),
+	        fluidRow(
+        		column(width = 4, 
+               		       wellPanel(
+				 selectInput( 
+					inputId = "content_type", 
+					label = "What sort of chart involving content type are you interested in observing?",
+                  			choices = c("Content Type only" = "default", 
+                    				    "Content Type By English-Speaking vs. Non English-Speaking" = "country", 
+				                    "Content Type By Content Rating" = 'rating',
+				                    "Content Type By Genre" = "genre")))), 
+        		column(
+			       width = 4, 
+          		       wellPanel(uiOutput(outputId = "interaction_terms"))), 
+        		column(
+			       width = 4,
+          		       wellPanel(uiOutput(outputId = "actual_interaction_variable")))
+      			),
+	      tags$br(),
+      	      plotOutput(outputId = "content_chart", width = "1000px", height = "700px")
+      
+		
+		),   # Ends tabPanel 2
+
+	     tabPanel(
+		
+		title = "DIRECTORS", 
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					In this section, it's all about directors.  You know, the ones who ultimately decide whether what's made is a masterpiece or a 
+					steaming pile of garbage.  There are a few ways we can look at breakdown of Netflix content by directors.  
+					In our case, we're interested in looking at how much of Netflix content actually has at least 1 credited director and how many do not.  
+					Plus we can look further by examining the distribution of directors across content type, language (English vs. Non-English), and Genres.
+			</p></body>")),
+		tags$br(),
+		fluidRow(
+			column(width = 3, 
+				wellPanel(
+				  radioButtons(inputId = "director_charts", 
+					       label = "What sort of chart involving director type are you interested in observing?", 
+					       choices = c("Just looking at director counts" = "default", 
+							  "Across content type" = "type", 
+							  "Across content rating" = "content",
+							  "English content vs. Non-English content" = "english",
+							  "Across genres" = 'genre')))),
+			column(width = 8,
+			       plotOutput(outputId = "director_charts", width = "800px", height = "500px"))
+		),
+		tags$br(),
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Aside from compairing just content based on presence of a credited director or not, it's really more important to see who is directing these content.
+					So why not observe this visually with plots and pictures. YAY!!!! Here I'll show you who are the <strong> 'top'</strong> directors based on the 
+					number of credited work shown on Netflix stratified by (a) genre and (b) whether they are assistant vs. lead vs. overall. 
+			</p></body>")),
+		tags$br(),
+      		fluidRow(column(width = 3, 
+				wellPanel(
+        				selectInput(inputId = "director_comparisons", 
+						    label = "Observe the top directors by what?", 
+                                                    choices = c("Genre: TV Action & Adventure" = "TV Action & Adventure",
+                                                              "Genre: Movie Action & Adventure" = "Action & Adventure",
+                                                              "Genre: TV Drama" = "TV Dramas",
+                                                              "Genre: Movie Drama" = "Dramas",
+                                                              "Genre: TV Comedy" = "TV Comedies",
+                                                              "Genre: Movie Comedy" = "Comedies",
+                                                              "Genre: TV Horror" = "TV Horror",
+                                                              "Genre: Movie Horror" = "Horror Movies",
+                                                              "Genre: Stand-Up/Skits/Talk Shows" = "Stand-Up Comedy & Talk Shows",
+                                                              "Genre: Stand-Up Specials" = "Stand-Up Comedy",
+                                                              "Genre: Music & Musicals" = "Music & Musicals",
+                                                              "Genre: Sports" = "Sports Movies", 
+                                                              "Genre: LGBTQ" = "LGBTQ Movies",
+                                                              "Genre: Independent Movies" = "Independent Movies",
+                                                              "Genre: Classic & Cult TV" = "Classic & Cult TV",
+                                                              "Genre: Cult Movies" = "Cult Movies",
+                                                              "Genre: Classic Movies" = "Classic Movies",
+                                                              "Genre: Korean TV" = "Korean TV Shows",
+                                                              "Genre: British TV" = "British TV Shows",
+                                                              "Genre: Spanish TV" = "Spanish-Language TV Shows",
+                                                              "Genre: Children & Family Movies" = "Children & Family Movies",
+                                                              "Genre: Kids' TV" = "Kids' TV",
+                                                              "Genre: Teen TV" = "Teen TV Shows",
+                                                              "Genre: TV Thriller" = "TV Thrillers",
+                                                              "Genre: Movie Thriller" = "Thrillers",
+                                                              "Genre: Reality TV" = "Reality TV", 
+                                                              "Genre: International Movie" = "International Movies",
+                                                              "Genre: International TV" = "International TV Shows",
+                                                              "Genre: TV SciFi & Fantasy" = "TV Sci-Fi & Fantasy", 
+                                                              "Genre: Movie SciFi & Fantasy" = "Sci-Fi & Fantasy", 
+                                                              "Genre: Science & Nature TV" = "Science & Nature TV", 
+                                                              "Genre: TV Romance" = "Romantic TV Shows",
+                                                              "Genre: Movie Romance" = "Romantic Movies",
+                                                              "Genre: Anime Features" = "Anime Features",
+                                                              "Genre: Anime Series" = "Anime Series",
+                                                              "Genre: Crime TV" = "Crime TV Shows",
+                                                              "Genre: Mystery TV" = "TV Mysteries", 
+                                                              "Genre: Documentaries" = "Documentaries",
+                                                              "Genre: Docuseries" = "Docuseries",
+                                                              "Genre: Faith & Spirituality" = "Faith & Spirituality")),
+        				radioButtons(inputId = "director_type", 
+						     label = "What sort of directors are you including?", 
+                                                     choices = c("Lead Directors Only" = "lead",
+                                                               	 "Assistant/Guests Directors Only" = "assistant",
+                                                                 "All kinds of Directors" = "both")))), 
+      		    column(width = 8, 
+			   plotOutput(outputId = "top_directors", width = "700px", height = '500px'))),
+		tags$br(), 
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Just in case you need a visual, here is the image of the 'top' directors for their given category. 
+			</p></body>")),
+		fluidRow(
+			column(width = 4, h3(textOutput(outputId = "director_name"))),
+			column(width = 7, uiOutput(outputId = "director_image"))
+		)
+		),   # Ends tabPanel 3
+	     
+		tabPanel(
+		
+		title = "CAST", 
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Let's be honest, when you are trying to market a movie, the cast is what's driving whether or not someone will actually watch it or not.  
+					However, because Netflix is really a hodgepot of TV series and movies, it's entirely possible that there may not be a single credited cast member 
+					because of it being a documentary, reality TV show or whatever.  So let's first take a quick look and see how Netflix content is distributed based on
+					whether there is a credited cast or not across content type, language (English vs. Non-English), and Genres. 
+			</p></body>")),
+		tags$br(),
+		fluidRow(
+			column(width = 3, 
+			      wellPanel(
+				radioButtons(inputId = "cast_charts",
+					    label = "What sort of chart involving cast type are you interested in exploring?",
+					    choices = c("Just looking at cast counts" = "default", 
+							"Across content type" = "type", 
+							"Across content rating" = "content",
+							"English content vs. Non-English content" = "english",
+							"Across genres" = 'genre')))),
+			column(width = 8, plotOutput(outputId = "cast_charts", width = '800px', height = '500px')) 
+		),
+		tags$br(), 
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Just like I did with the directors, I want to see who are the top actors/actresses on Netflix based on their cast listing, genre categories and
+					whether the content is English-speaking or not. 
+			</p></body>")),
+		tags$br(), 
+		fluidRow(
+      			column(width = 3, 
+			       wellPanel(
+				        selectInput(inputId = "cast_comparisons", 
+						    label = "Observe the top Actors/Actresses by what?", 
+                                                    choices = c("Genre: TV Action & Adventure" = "TV Action & Adventure",
+                                                                 "Genre: Movie Action & Adventure" = "Action & Adventure",
+                                                                 "Genre: TV Drama" = "TV Dramas",
+                                                                 "Genre: Movie Drama" = "Dramas",
+                                                                 "Genre: TV Comedy" = "TV Comedies",
+                                                                 "Genre: Movie Comedy" = "Comedies",
+                                                                 "Genre: TV Horror" = "TV Horror",
+                                                                 "Genre: Movie Horror" = "Horror Movies",
+                                                                 "Genre: Stand-Up/Skits/Talk Shows" = "Stand-Up Comedy & Talk Shows",
+                                                                 "Genre: Stand-Up Specials" = "Stand-Up Comedy",
+                                                                 "Genre: Music & Musicals" = "Music & Musicals",
+                                                                 "Genre: Sports" = "Sports Movies", 
+                                                                 "Genre: LGBTQ" = "LGBTQ Movies",
+                                                                 "Genre: Independent Movies" = "Independent Movies",
+                                                                 "Genre: Classic & Cult TV" = "Classic & Cult TV",
+                                                                 "Genre: Cult Movies" = "Cult Movies",
+                                                                 "Genre: Classic Movies" = "Classic Movies",
+                                                                 "Genre: Korean TV" = "Korean TV Shows",
+                                                                 "Genre: British TV" = "British TV Shows",
+                                                                 "Genre: Spanish TV" = "Spanish-Language TV Shows",
+                                                                 "Genre: Children & Family Movies" = "Children & Family Movies",
+                                                                 "Genre: Kids' TV" = "Kids' TV",
+                                                                 "Genre: Teen TV" = "Teen TV Shows",
+                                                                 "Genre: TV Thriller" = "TV Thrillers",
+                                                                 "Genre: Movie Thriller" = "Thrillers",
+                                                                 "Genre: Reality TV" = "Reality TV", 
+                                                                 "Genre: International Movie" = "International Movies",
+                                                                 "Genre: International TV" = "International TV Shows",
+                                                                 "Genre: TV SciFi & Fantasy" = "TV Sci-Fi & Fantasy", 
+                                                                 "Genre: Movie SciFi & Fantasy" = "Sci-Fi & Fantasy", 
+                                                                 "Genre: Science & Nature TV" = "Science & Nature TV", 
+                                                                 "Genre: TV Romance" = "Romantic TV Shows",
+                                                                 "Genre: Movie Romance" = "Romantic Movies",
+                                                                 "Genre: Anime Features" = "Anime Features",
+                                                                 "Genre: Anime Series" = "Anime Series",
+                                                                 "Genre: Crime TV" = "Crime TV Shows",
+                                                                 "Genre: Mystery TV" = "TV Mysteries", 
+                                                                 "Genre: Documentaries" = "Documentaries",
+                                                                 "Genre: Docuseries" = "Docuseries",
+                                                                 "Genre: Faith & Spirituality" = "Faith & Spirituality")),
+        				radioButtons(inputId = "cast_language", 
+						     label = "Are you interested in English-Only Actors/Actresses?", 
+                                                     choices = c("Yes, just English" = "English Speaking",
+                                                                 "No, only Non-English" = "Non-English Speaking",
+                                                                 "Both" = "both")), 
+        				radioButtons(inputId = "cast_type", 
+						     label = "What cast billing are you interested in?", 
+                                                     choices = c("Headliners Only" = "headliner",
+                                                               "Supporting Only" = "supporting cast",
+                                                               "Both" = "both")), 
+        
+      			)), 
+      			column(width = 8, plotOutput(outputId = "top_cast", width = "700px", height = '500px'))), 
+      		tags$br(), 
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Just in case that you don't know who is who, I've included an image to help you identify who are these top actors/actresses. 
+			</p></body>")),
+		tags$br(),
+		fluidRow(
+        		column(width = 3, h2(textOutput(outputId = "cast_name"))),
+        		column(width = 8, uiOutput(outputId = "cast_image"))
+			)
+		),    # Ends tabPanel 4 
+	     tabPanel(
+		
+		title = "LANGUAGE, CONTENT RATING & GENRES",
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					In terms of language, the best approach is likely looking at the country of origin where the content was made.  
+					Using the list of predominantly English-speaking countries as shown 
+					<a href = 'https://en.wikipedia.org/wiki/List_of_countries_and_territories_where_English_is_an_official_language' >  here </a>,
+					we can split up the data to see the makeup of presumably English-speaking content from foreign content.   
+			</p></body>")),
+		tags$br(), 
+		plotOutput(outputId = "language_output", width = '800px', height = '500px'),
+		tags$br(),
+ 		tags$div(
+        		HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
+					Aside from language, we can observe the distribution of content based on its content rating as well. This id pretty important as Netflix is 
+					really just a hodgepot of various TV or movie content that really isn't catered specifically to a target audience.  I guess they probably cater 
+					to the <em>'I just need background noise while I do something else' </em> crowd. 
+			</p> </body>")), 
+      		tags$br(),
+	        plotOutput(outputId = "rating_output", width = "800px", height = '500px'), 
+	        tags$br(), 
+      		tags$div(
+        		HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
+					Lastly, we can look at the distribution of Netflix content based on the various genre that's available of Netflix.  
+					While I'm pretty sure it's probably geared to the big three (action, drama and comedy), it does have a surprising variety that you probably 
+					wouldn't have thought ot.  So let's check that out.
+			</p> </body>")),
+      		tags$br(),
+      		plotOutput(outputId = "genre_output", width = "800px", height = '500px') 
+		),  # Ends tabPanel 5
+
+	     tabPanel(
+		
+		title = "KEY WORDS",
+		tags$div(
+			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
+					Given the diverse content available on Netflix, it would be interesting to look at some of the description of these content across various genres 
+					and ratings.  While there is a number of ways to approach this, I figure I can have a little fun with this and look at it using 
+					word clouds to demonstrate the most prevalent of these words.  
+			</p></body>")),
+		tags$br(),
+		fluidRow(
+        		column(width = 4, 
+		               wellPanel(
+                		 radioButtons(inputId = "dataset", 
+                              	 label = "What sort of variable are you interested in?",
+                              	 choices = c("Genres" = "genre", 
+					     "Ratings" = "rating", 
+					     "Languages" = "language")), 
+                 		uiOutput(outputId = "variable_selection"),
+                 		sliderInput(inputId = "number_of_words", 
+                             		    label = "Number of top key words to include", 
+                             		    min = 0, 
+                                            max = 100, 
+                                            value = 10, 
+                                            step = 1)
+                 		)),
+        		column(width = 7,
+               		       wordcloud2Output(outputId = "wordcloud", width = 800, height = 500)))
+		),  # Ends tabPanel 6
+
+		tabPanel(
+			title = "Find out what to watch next!",
+      
+      			tags$div(
+        			HTML("<body> <p style = 'font-size: 140%; text-align: justify'> 
+                    			So, If you've ever wanted to have a complete stranger figure out what you should watch on Netflix based on your current favorites on Netflix.  
+                    			Well here's your chance.  Who needs Rotten Tomatoes, IMDB or other vetted critique source.  Type in some of your favorite TV series or movies on 
+					Netflix and this thing will try to put out some recommendations for you. 
+			                Give it a shot! 
+                		</p> </body>")),
+      			tags$br(),
+      			fluidRow(
+        			column(width = 4, 
+               			       wellPanel(
+                 				helpText("In this section, we'll need you to enter the title of 3 TV series or Movies on Netflix that you're into in a ranked fashion.  
+					  		 We'll use this as a benchmark to figure out what sort of other stuff on Netflix to recomment to you.  As a reminder, you'll need 
+							to be mindful of spelling and case."),
+                 				tags$br(),
+                 				textInput(inputId = "entry_1", 
+                           	  			  label = "Put down the title for your top-ranked Netflix content here."),
+                 				textOutput(outputId = "entry_1_check"),
+                 				tags$br(),
+                 				textInput(inputId = "entry_2", 
+                           	  			  label = "Put down the title for your second-ranked Netflix content here."),
+	                			textOutput(outputId = "entry_2_check"),
+	                			tags$br(),
+                 				textInput(inputId = "entry_3", 
+                           	  			  label = "Put down the title for your third-ranked Netflix content here."),
+	                			textOutput(outputId = "entry_3_check"),
+            	        			tags$br(), 
+                 				sliderInput(inputId = "n_recommend", label = "How many recommendations do you want", min = 1, max = 100, value = 5, step = 1))), 
+		               column(width = 8, tableOutput(outputId = "Recommendations")))
+			) # Ends tabPanel 7
+	     ) # Ends navlistPanel
+
+) # end fluidPage
