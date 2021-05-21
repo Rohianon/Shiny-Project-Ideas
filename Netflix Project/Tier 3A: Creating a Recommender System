@@ -91,9 +91,8 @@ netflix_for_recommend = netflix_for_recommend %>%
     !is.na(cast)
   ) %>% 
   mutate(
+  cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast")
   ) 
-  
-    cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast")
   
   
  # STEP 2: Be way more specific with what you want to play a factor in deciding recommendations.  
