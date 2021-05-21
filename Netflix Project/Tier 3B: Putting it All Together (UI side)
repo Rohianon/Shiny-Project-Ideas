@@ -1,3 +1,121 @@
+# NEED THIS FOR THE RECOMMENDER 
+
+library(cluster)
+
+netflix_for_recommend = netflix %>% select(show_id, type, title, director, cast, listed_in, country, rating, description)
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    director, into = c("lead","assitant 1","assistant 2","assistant 3","assistant 4","assistant 5","assistant 6","assistant 7","assistant 8",
+    "assistant 9","assistant 10","assistant 11","assistant 12"), sep = ", "
+  ) %>% 
+  pivot_longer(
+    lead:`assistant 12`, names_to = "director_type", values_to = "director_name"
+  ) %>% filter(
+    !is.na(director_name)
+  ) %>% 
+  mutate(
+    director_type = ifelse(director_type != "lead", "assistant/guest", "lead")
+  )
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    country, c("main country", "secondary country", 'tertiary country', 'fourth country', "fifth country", 'sixth country', "seventh country", 
+    'eighth country', 'nineth country', 'tenth country', 'eleventh country', 'twelfth country'), sep = ","
+  ) %>% 
+  pivot_longer(
+    `main country`:`twelfth country`, names_to = "country_type", values_to = "country_name"
+  )  %>% 
+  filter(
+    !is.na(country_name)
+  ) %>% 
+  mutate(
+    country_type = ifelse(country_type == "main country", 'main country', 'other country'), 
+    country_name = ifelse(country_name == "", "Unknown Country", country_name)
+  ) 
+  
+ netflix_for_recommend  = netflix_for_recommend %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(
+    !is.na(english_or_not) 
+  )
+ 
+netflix_for_recommend = netflix_for_recommend %>% 
+  separate(
+    listed_in, into = c('principal', 'secondary', 'tertiary'), sep = ","
+  ) %>% 
+  pivot_longer(
+    principal:tertiary, names_to = "listing_type", values_to = "genre"
+  ) %>% 
+  filter(!is.na(genre)) %>% 
+  mutate(
+    listing_type = ifelse(listing_type == "principal", "principal", 'secondary/tertiary')
+  )
+  
+ netflix_for_recommend = netflix_for_recommend %>%  
+  separate(
+    cast, into = c("headliner", 'cast member 1', 'cast member 2', 'cast member 3', 'cast member 4', 'cast member 5', 'cast member 6', 'cast member 7', 
+    'cast member 8', 'cast member 9', 'cast member 10', 'cast member 11', 'cast member 12', 'cast member 13', 'cast member 14', 'cast member 15', 'cast member 16', 
+    'cast member 17', 'cast member 18', 'cast member 19', 'cast member 20', 'cast member 21', 'cast member 22', 'cast member 23', 'cast member 24', 'cast member 25', 
+    'cast member 26', 'cast member 27', 'cast member 28', 'cast member 29', 'cast member 30', 'cast member 31', 'cast member 32', 'cast member 33', 'cast member 34', 
+    'cast member 35', 'cast member 36', 'cast member 37', 'cast member 38', 'cast member 39', 'cast member 40', 'cast member 41', 'cast member 42', 'cast member 43', 
+    'cast member 44', 'cast member 45', 'cast member 46', 'cast member 47', 'cast member 48', 'cast member 49'), sep = ", "
+  ) %>% 
+  pivot_longer(
+    headliner:`cast member 49`, names_to = "cast_type", values_to = 'cast'
+  ) %>% 
+  filter(
+    !is.na(cast)
+  ) %>% 
+  mutate(
+  cast_type = ifelse(cast_type == "headliner", "headliner", "supporting cast")
+  ) 
+
+
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  filter(cast_type == "headliner") %>% 
+  filter(director_type == "lead") %>% 
+  filter(listing_type == "principal") %>%
+  filter(!is.na(english_or_not)) %>% 
+  select(show_id, type, title, rating, director_name, country_name, english_or_not, genre, cast, description)
+
+
+netflix_for_recommend = netflix_for_recommend %>% 
+  mutate(
+    type = as.factor(type),
+    rating = as.factor(rating), 
+    director_name = as.factor(director_name), 
+    cast = as.factor(cast),
+    genre = as.factor(genre),
+    country_name = as.factor(country_name), 
+    english_or_not = as.factor(english_or_not)
+  )
+
+
+netflix_select_features = netflix_for_recommend %>% select(type, english_or_not, rating, genre, director_name, cast)
+
+
+dissimilarity = as.matrix(daisy(netflix_select_features, metric = "gower"), weight(0.5, 2, 1, 1, 0.5, 2)) 
+
+row.names(dissimilarity) = netflix_for_recommend$show_id 
+colnames(dissimilarity) = netflix_for_recommend$show_id  
+
+##########################################
+
+
 ui = fluidPage(
 
 	tags$div(
