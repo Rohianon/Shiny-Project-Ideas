@@ -135,7 +135,7 @@ netflix_select_features = netflix_for_recommend %>% select(cast_type, english_or
 # 2x that of the director in driving recommendation and that whether the content is in English or Not has 2x the impact over whether something is a TV series or a Movie. 
 # As for rating and genre, they have equal weighting with each other but are greater than content type and director_name but less than language and headlining cast member. 
 
-dissimilarity = as.matrix(daisy(netflix_selector_features, metric = "gower"), weight(0.5, 2, 1, 1, 0.5, 2)) # possible with the cluster library 
+dissimilarity = as.matrix(daisy(netflix_select_features, metric = "gower"), weight(0.5, 2, 1, 1, 0.5, 2)) # possible with the cluster library 
  
 row.names(dissimilarity) = netflix_for_recommend$show_id # To add row names for ID purposes 
 colnames(dissimilarity) = netflix_for_recommend$show_id  # To add column names for ID purposes 
