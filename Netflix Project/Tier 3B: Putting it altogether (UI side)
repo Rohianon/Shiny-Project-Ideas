@@ -113,7 +113,7 @@ ui = fluidPage(
 							  "English content vs. Non-English content" = "english",
 							  "Across genres" = 'genre')))),
 			column(width = 8,
-			       plotOutput(outputId = "director_charts", width = "800px", height = "500px"))
+			       plotOutput(outputId = "director_charts", height = "500px"))
 		),
 		tags$br(),
 		tags$div(
@@ -173,7 +173,7 @@ ui = fluidPage(
                                                                	 "Assistant/Guests Directors Only" = "assistant",
                                                                  "All kinds of Directors" = "both")))), 
       		    column(width = 8, 
-			   plotOutput(outputId = "top_directors", width = "700px", height = '500px'))),
+			   plotOutput(outputId = "top_directors",  height = '500px'))),
 		tags$br(), 
 		tags$div(
 			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
@@ -206,7 +206,7 @@ ui = fluidPage(
 							"Across content rating" = "content",
 							"English content vs. Non-English content" = "english",
 							"Across genres" = 'genre')))),
-			column(width = 8, plotOutput(outputId = "cast_charts", width = '800px', height = '500px')) 
+			column(width = 8, plotOutput(outputId = "cast_charts",  height = '500px')) 
 		),
 		tags$br(), 
 		tags$div(
@@ -272,7 +272,7 @@ ui = fluidPage(
                                                                "Both" = "both")), 
         
       			)), 
-      			column(width = 8, plotOutput(outputId = "top_cast", width = "700px", height = '500px'))), 
+      			column(width = 8, plotOutput(outputId = "top_cast", height = '500px'))), 
       		tags$br(), 
 		tags$div(
 			HTML("<body><p style = 'font-size: 140%; text-align: justify'>
