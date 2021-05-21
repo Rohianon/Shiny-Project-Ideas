@@ -105,14 +105,14 @@ netflix_for_recommend = netflix_for_recommend %>%
   filter(director_type == "lead") %>% 
   filter(listing_type == "principal") %>%
   filter(!is.na(english_or_not)) %>% 
-  select(show_id, type, title, rating, director_name, country_name, english_or_not, genre, cast, description)
+  select(show_id, cast_type, title, rating, director_name, country_name, english_or_not, genre, cast, description)
  
  
 # STEP 3: Convert the variables into categorical variables (aka. factor type) since it's all just characters now
 
 netflix_for_recommend = netflix_for_recommend %>% 
   mutate(
-    type = as.factor(type),
+    type = as.factor(cast_type),
     rating = as.factor(rating), 
     director_name = as.factor(director_name), 
     cast = as.factor(cast),
@@ -127,7 +127,7 @@ netflix_for_recommend = netflix_for_recommend %>%
 
 # firstly, subset this reference dataframe to include ONLY THE EVALUATION VARIABLES 
 
-netflix_select_features = netflix_for_recommend %>% select(type, english_or_not, rating, genre, director_name, cast)
+netflix_select_features = netflix_for_recommend %>% select(cast_type, english_or_not, rating, genre, director_name, cast)
 
 # Now I'll create a matrix that would be used to evaluate the similarity (well in this case the dis-similarity) of each entry by given features
 # NOTE: in my case, I'll be using Gower's coefficient which allows for me to put on some weighting aspect to each of my selected variables to indicate based on my own choice. 
@@ -190,7 +190,7 @@ top_recommendations = head(something_here , 5)
 top_recommentations = top_recommentations %>% 
       left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% 
       select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, 
-             english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+             english_or_not.y, cast.x, cast.y, cast_type.x, cast_type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
 
 
 recommendations = top_5_recommentation$title.y # Here are a list of titles. 
@@ -233,7 +233,7 @@ getting_recommendations = function(
   top_selections = top_selections %>% 
                 left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% 
                 select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, 
-                english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+                english_or_not.y, cast.x, cast.y, cast_type.x, cast_type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
   
   recommendations = top_selections$title.y 
   
@@ -373,7 +373,7 @@ server = function(input, output) {
     top_recommendations = top_recommendations %>% 
       left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id"))
     
-    top_recommendations = top_recommendations %>% left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, english_or_not.y, cast.x, cast.y, type.x, type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
+    top_recommendations = top_recommendations %>% left_join(netflix_for_recommend, by = c("recommended_netflix_content" = "show_id")) %>% select(recommended_netflix_content, title.y, title.x, weighted_similarity, dissimilarity, english_or_not.x, english_or_not.y, cast.x, cast.y, cast_type.x, cast_type.y, genre.x, genre.y, rating.x, rating.y, director_name.x, director_name.y, description.y) 
     
     selection = top_recommendations %>% select(title.y, recommended_netflix_content, weighted_similarity, description.y)
     colnames(selection) = c("Suggested Titles", "Show Id", "Weighted Similarity Score", "Description")
