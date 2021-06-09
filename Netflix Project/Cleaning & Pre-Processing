@@ -147,7 +147,7 @@ netflix = netflix %>%
     ifelse(date_added == " January 8, 2018", "08-Jan-18",
     ifelse(date_added == " December 25, 2015", "25-Dec-15",
     ifelse(date_added == " August 1, 2017", "01-Aug-17",
-    ifelse(date_added == " March 31, 2017", "31-Mar-17", date_added))))))))))))))))))))))))
+    ifelse(date_added == " March 31, 2017", "31-Mar-17", date_added)))))))))))))))))))))))))
     
 
 # There are a lot of missing entries for countries.  Like nearly 1000.  I'm not going to Google this, but instead will use clues in the description, genres, cast and directors
