@@ -1,0 +1,246 @@
+# For Question 1A:
+chisq.test(netflix %>% 
+  group_by(type) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>%
+  select(count))
+         
+netflix %>% 
+  group_by(type) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  ggplot(
+    aes(x = "", y = count, fill = type)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') +
+  scale_fill_manual(values = c("TV Show" = "firebrick2", "Movie" = "slateblue3")) + 
+  geom_text(
+    aes(label = paste0(round((count/sum(count))*100, 2), "%")), 
+    position = position_stack(vjust = 0.5), 
+    color = "white", 
+    fontface = "bold", 
+    size = 15
+  )  + 
+  coord_polar(theta = 'y', start = 0) + 
+  theme_classic() + 
+  theme(
+    axis.title = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    legend.text = element_text(size = 24),
+    legend.title = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 24),
+    plot.caption = element_text(hjust = 0.5, size = 20)
+  ) + 
+  labs(title = "Breakdown of Netflix by Content Type", caption = "Χ^2 = 1130.5, p < 0.001")
+
+
+# Question 1B:
+netflix_genre_split %>% 
+  group_by(genre, type, listing_type) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  ggplot(
+    aes(x = reorder(genre, count), y = count, fill = type)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() + 
+  theme(
+    axis.text = element_text(color = 'black'), 
+    axis.title = element_text(size = 20),
+    plot.title = element_text(hjust = 0.5, size = 24),
+    legend.title = element_blank(), 
+    strip.text.x = element_text(color = 'black', size = 15, face = 'bold'),
+    strip.text.y = element_text(color = 'black', size = 15, face = 'bold'),
+    axis.text.x = element_text(size = 15)
+  ) + 
+  labs(x = "Genres", y = "Number of Netflix Content", title = "Breakdown of Netflix Content by Genres") +
+  coord_flip() + 
+  guides(fill = F) + 
+  facet_grid(cols = vars(type), rows = vars(listing_type))
+
+
+# QUESTION 2:
+
+chisq.test(netflix_country_split %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not)) %>%
+  group_by(english_or_not) %>% 
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>%
+  select(count))
+
+netflix_country_split %>% 
+  mutate(
+    english_or_not = 
+      ifelse(c(country_type == "main country" & country_name == "United States"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "United Kingdom"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Canada"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "New Zealand"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Australia"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Ireland"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Jamaica"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Barbados"), "English Speaking", 
+      ifelse(c(country_type == "main country" & country_name == "Belize"), "English Speaking", 
+      ifelse(country_type == "main country", "Non-English Speaking", NA))))))))))
+  ) %>% 
+  filter(!is.na(english_or_not)) %>%
+  group_by(english_or_not) %>% 
+  summarise(count = n()) %>%
+  arrange(desc(count)) %>% 
+  ggplot(
+    aes(x = "", y = count, fill = english_or_not)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  scale_fill_manual(values = c("English Speaking" = "firebrick2", "Non-English Speaking" = "slateblue3")) + 
+  geom_text(
+    aes(label = paste0(round((count/sum(count))*100, 2), "%")), 
+    position = position_stack(vjust = 0.5), 
+    color = "white", 
+    fontface = "bold", 
+    size = 15
+  ) + 
+  coord_polar(theta = "y", start = 0) + 
+  theme_classic() +
+  theme(
+    axis.title = element_blank(),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    legend.text = element_text(size = 24),
+    legend.title = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 24),
+    plot.caption = element_text(hjust = 0.5, size = 20)
+  ) + 
+  labs(title = "Breakdown of Netflix Content b/t English and Non-English Content", 
+       caption = "X^2 = 1.47, p = 0.225")
+
+# QUESTION 3:
+
+chisq.test(netflix %>%
+  group_by(rating) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  select(count))
+
+netflix %>%
+  group_by(rating) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>%
+  ggplot(
+    aes(x = reorder(rating, count), y = count, fill = rating)
+  ) + 
+  geom_bar(stat = 'identity', color = 'black') + 
+  theme_classic() +
+  labs(y = "Number of Netflix Content", 
+       x = "Content Type", 
+       title = "Breakdown of Netflix Content by Content Ratings",
+       caption = "X^2 = 16393, p < 0.001") +
+  guides(fill = F) +
+  theme(
+    axis.text = element_text(color = 'black', size = 15),
+    axis.title = element_text(color = 'black', size = 15),
+    strip.text = element_text(color = 'black', size = 15),
+    plot.title = element_text(color = "black", size = 24, hjust = 0.5),
+    plot.caption = element_text(color = 'black', size = 15, hjust = 0.5)
+  )
+
+# QUESTION 4:
+
+netflix_countryxcast_df %>% 
+  filter(cast_type == "headliner") %>%
+  filter(cast != "Unknown/No Cast") %>%
+  group_by(english_or_not, cast) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(3) %>% 
+  ggplot(
+    aes(x = reorder(cast, count), y = count, fill = english_or_not)
+  ) + 
+  geom_bar(
+    stat = 'identity', color = 'black'
+  ) + 
+  scale_fill_manual(values = c("English Speaking" = "firebrick2", "Non-English Speaking" = "slateblue3")) + 
+  guides(fill = F) +
+  labs(x = "Headlining Cast", 
+       y = "Number of Netflix Content", 
+       title = "Top 3 Headlining Cast Member Based on Number of Netflix Credits",
+       caption = "*Excluding non-credited content") + 
+  theme_classic() + 
+  coord_flip() + 
+  facet_wrap(vars(english_or_not)) + 
+  theme(
+    axis.text = element_text(color = 'black', size = 13),
+    axis.title = element_text(color = 'black', size = 15), 
+    plot.title = element_text(color = 'black', size = 20, hjust = 0.5),
+    plot.caption = element_text(color = 'black', hjust = 0.5, size = 12),
+    strip.text =  element_text(color = 'black', face = 'bold', size = 15)
+  )
+  
+netflix_countryxdirector_df %>% 
+  filter(director_type == "lead") %>%
+  filter(director_name != "Unknown/No Director(s)") %>%
+  group_by(english_or_not, director_name) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(3) %>% 
+  ggplot(
+    aes(x = reorder(director_name, count), y = count, fill = english_or_not)
+  ) + 
+  geom_bar(
+    stat = 'identity', color = 'black'
+  ) + 
+  scale_fill_manual(values = c("English Speaking" = "firebrick2", "Non-English Speaking" = "slateblue3")) + 
+  guides(fill = F) +
+  labs(x = "Lead Director", 
+       y = "Number of Netflix Content", 
+       title = "Top 3 Lead Director Based on Number of Netflix Credits",
+       caption = "*Excluding non-credited content") + 
+  theme_classic() + 
+  coord_flip() + 
+  facet_wrap(vars(english_or_not)) + 
+  theme(
+    axis.text = element_text(color = 'black', size = 13),
+    axis.title = element_text(color = 'black', size = 15), 
+    plot.title = element_text(color = 'black', size = 20, hjust = 0.5),
+    plot.caption = element_text(color = 'black', hjust = 0.5, size = 12),
+    strip.text =  element_text(color = 'black', face = 'bold', size = 15)
+  )
+
+
+# QUESTION 5:
+
+wordcloud2(
+  data = netflix_descriptionxlanguage %>% 
+  filter(!is.na(english_or_not)) %>% 
+  filter(english_or_not == "English Speaking") %>%
+  group_by(keywords) %>% 
+  summarise(count = n()) %>% 
+  arrange(desc(count)) %>% 
+  top_n(100), 
+  minSize = 0.6,
+  minRotation = 0,
+  backgroundColor = "orange")
+
+wordcloud2(
+  data = netflix_descriptionxlanguage %>% 
+    filter(!is.na(english_or_not)) %>% 
+    filter(english_or_not == "Non-English Speaking") %>%
+    group_by(keywords) %>% 
+    summarise(count = n()) %>% 
+    arrange(desc(count)) %>% 
+    top_n(100), 
+  minSize = 0.6,
+  minRotation = 0,
+  backgroundColor = "orange")
