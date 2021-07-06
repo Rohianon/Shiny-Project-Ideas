@@ -1,0 +1,335 @@
+# REVAMPING THE HOME WORKOUT APP IDEA
+
+
+# STEP 1: Loading the necessary libraries 
+
+library(shiny)
+library(tidyverse)
+library(stringr)
+library(shinythemes)
+library(car)
+library(rms)
+library(datasets)
+library(bslib)
+library(plyr)
+library(dplyr)
+library(skimr)
+#######################################################
+
+# STEP 2: Setting up my working directory to access files from local drive
+
+setwd("~/MyDatasets")
+
+#######################################################
+
+#STEP 3: Reading in my exercise files and seeing what it is like
+
+exercise_list = read.csv("Goddamn Exercise List.csv")
+View(exercise_list)
+attach(exercise_list)
+skimr::skim_without_charts(exercise_list)
+
+#######################################################
+
+# STEP 4: Rename the first column because it didn't turn out good 
+
+colnames(exercise_list)[1] = "Equipment"
+colnames(exercise_list)
+
+########################################################
+
+# STEP 5: Reclassifying the data type for each of the variables 
+
+exercise_list = exercise_list %>% mutate(
+  Complexity = as.numeric(Complexity), 
+  Muscles = as.factor(Muscles),
+  Purpose = as.factor(Purpose), 
+  Exercise = as.character(Exercise),
+  Equipment = as.factor(Equipment)
+)
+
+##########################################################
+
+# STEP 6: Fix the set-up for YouTube links because it's not coded right
+
+youtube_links = exercise_list$Links
+youtube_links = gsub("watch\\?v=*", "embed/", youtube_links)
+exercise_list$Links = gsub("watch\\?v=*", "embed/", exercise_list$Links)
+View(exercise_list)
+
+###########################################################
+
+# STEP 7: Set up a very generic theme for the app 
+
+theme1 = bs_theme(version = 4, bootswatch = "united")
+
+############################################################
+
+# STEP 8: UI SIDE OF THINGS
+
+ui = fluidPage(
+  
+  theme = theme1, 
+  titlePanel(h1("Home Workout App", align = "center")), 
+  navbarPage(
+    title = "",
+    
+    tabPanel(
+      title = "Exercise Generator", 
+      helpText("The goal is to help you pick out some exercises that will best help you out to be active during quarantining.  So let's figure out what you can do."),
+      br(),
+      sidebarLayout(
+        sidebarPanel(
+          selectInput(inputId = 'stuff', label = "What equipment are you using / have available?", multiple = F, choices = c("Just My Body" = "nothing",
+                                                                                                                             "Dumbbells" = "db", 
+                                                                                                                             "kettlebells" = "kb",
+                                                                                                                             "Barbells + Plates" = "bar",
+                                                                                                                             "Resistance Bands" = "rb_long"
+          )), 
+          
+          selectInput(inputId = "area", label = "What area of focus are you interested in working?", choices = c("Shoulders" = "sh", 
+                                                                                                                 "Chest" = "ch", 
+                                                                                                                 "Back" = "back",
+                                                                                                                 "Biceps" = "bi",
+                                                                                                                 "Triceps" = "tri", 
+                                                                                                                 "Forearms" = "fore",
+                                                                                                                 "Quadriceps" = "quad",
+                                                                                                                 "Hamstrings" = "ham",
+                                                                                                                 "Glutes" = "glut",
+                                                                                                                 "Abdominals" = "core")),
+          radioButtons(inputId = "purpose", label = "What's the primary purpose of doing this exercise?", choices = c("Increasing Strength" = "strength",
+                                                                                                                      "Muscle Growth" = "hypertrophy",
+                                                                                                                      "Longevity and Being Pain-Free" = "pain_free")),
+          
+          sliderInput(inputId = "skill", label = "Difficulty scale (from low to high)", min = 1, max = 5, step = 1, value =  1)
+          
+          
+        ),
+        mainPanel(
+          h1(textOutput("name"), align = "center"),
+          uiOutput(outputId = "video")
+            )
+          )
+    ),
+    
+    tabPanel(
+      title = "Determining Lifting Intensity",
+      helpText("Getting into the 'Meat and Potatoes' of the workout, here's how to figure out how heavy I should be lifting should be."),
+      br(),
+      strong("NOTE: Only applies if this actually involves some weight-bearing exercises"),
+      sidebarLayout(
+        sidebarPanel(
+          numericInput(inputId = "Rmax", label = "What's your 1-Rep Max for the given lift (either in KG/LBS)?", min = 0, value = 200), 
+          numericInput(inputId = "percent", label = "What's the percentage that you are planning to lift at?", min = 50, max = 100, step = 5,value = 50), 
+          selectInput(inputId = "rir", label = "How many reps are you planning on keeping back before absolute failure?", choices = c("Zero" = 'zero',
+                                                                                                                                      "One" = "one", 
+                                                                                                                                      "Two" = "two", 
+                                                                                                                                      "Three" = 'three', 
+                                                                                                                                      "Four or More" = "four")), 
+          sliderInput(inputId = "pain", label = "How stiff and sore are you feeling coming into the workout? (1 = no pain vs. 10 = debilitating)", value = 1, min = 1, max = 10),
+          radioButtons(inputId = "still", label = "After warming up, how are you feeling?", choices = c("Significantly better" = -3, 
+                                                                                                        "Noticeably better" = -2, 
+                                                                                                        "Slightly better" = -1, 
+                                                                                                        "No change" = 0, 
+                                                                                                        "Slightly worse" = 1,
+                                                                                                        "Noticeably worse" = 2, 
+                                                                                                        "Significantly worse" = 3), selected = 0)
+        ), 
+        mainPanel(
+          uiOutput(outputId = "pic"),
+          br(),
+          h3(textOutput(outputId = "final")), 
+          br(), 
+          h2("Purpose at this Intensity", align = "center"), 
+          textOutput(outputId = "text")
+        )
+      )
+    ), 
+    
+    tabPanel(
+      title = "KG/LBS Converter",
+      helpText("For those of you who haven't mastered the expert-level skill of converting between Kilograms and Pounds, you can use this."), 
+      br(),
+      sidebarLayout(
+        sidebarPanel(
+          numericInput(inputId = "number", label = "Enter the number to convert", value = 200),
+          radioButtons(inputId = "unit", label = "Is this in KG/Lbs?", choices = c("Kilograms" = "kg",
+                                                                                   "Pounds" = "lbs"))
+        ), 
+        mainPanel(
+          h2(textOutput(outputId = "Header")),
+          h4(textOutput(outputId = "unit")), 
+          br(),
+          uiOutput(outputId = "gif")
+        )
+      )
+    )
+  )
+)
+
+
+##############################################
+
+
+server = function(input, output){
+  
+  # Prints out the weight to be used for working sets 
+  
+  output$final = renderText({
+    
+    new_max = ifelse(input$rir == "zero", input$Rmax, 
+              ifelse(input$rir == "one", input$Rmax * 0.95,
+              ifelse(input$rir == "two", input$Rmax * 0.90,
+              ifelse(input$rir == "three", input$Rmax * 0.85, input$Rmax * 0.8))))
+    
+    change = ifelse(input$still == -3, -3, 
+             ifelse(input$still == -2, -2, 
+             ifelse(input$still == -1, -1,
+             ifelse(input$still == 0, 0,
+             ifelse(input$still == 1, 1, 
+             ifelse(input$still == 2, 2, 3))))))
+    
+    total_pain = input$pain + change
+    
+    ifelse(total_pain > 8.5, "Not going to happen. Just call it a day.", 
+           paste(
+             "Your working weights will be", as.character(
+               ifelse(total_pain < 2.5, round_any((new_max * (input$percent / 100)), 5, f = round), 
+               ifelse(c(total_pain >= 2.5 & total_pain < 5.5), round_any(((new_max * 0.9) * (input$percent / 100)), 5, f = round), round_any(((new_max * 0.9) * (input$percent / 100)), 5, f = round)))
+             ), "KG/LBS"
+           ))
+    
+  })
+  
+  # Prints out the heading to be used in the weight conversion section (i.e. one heading for lbs and one for kg)
+  
+  output$Header = renderText({
+    ifelse(input$unit == "kg", "Your load in lbs (aka. American Freedom units) is: ", "Your load in kgs (aka. what everyone else in the world uses) is: ")
+  })
+  
+  # Prints out the numerical value to be used in the weight conversion section 
+  
+  output$unit = renderText({
+    ifelse(input$unit == "kg", round_any((input$number/0.4536), 1, f = round), round_any((input$number*0.4536), 1, f=round))
+  })
+  
+  # Prints out the appropriate GIF representing that unit of interest
+  
+  output$gif = renderUI({
+    
+    url_world = "https://media0.giphy.com/media/Imkav206U2lFe/giphy.gif?cid=ecf05e4715l254damg22jouth57rmt9yegwvkc4anbwp5all&rid=giphy.gif"
+    url_usa = "https://media0.giphy.com/media/8KnfG3knLExpu/giphy.gif?cid=ecf05e47ljiequiwggqz7cco0zup8tdkq817u6ecxy29c8eu&rid=giphy.gif"
+    
+    determine = ifelse(input$unit == "kg", url_usa, url_world)
+    
+    tags$img(src = determine, height = 500, width = 750)
+    
+  })
+  
+  # Print out the appropriate GIF used in presenting the approprate intensity of the workout 
+  
+  output$pic = renderUI({
+    
+    url_not.happening = "https://media0.giphy.com/media/5RxNQCK01NdAc/giphy.gif?cid=ecf05e47zeyi91bfarfdm1zxb7nlh05yx6yzyx4gxhzug1ad&rid=giphy.gif"
+    url_careful = "https://media1.giphy.com/media/l1Ku7t8PDzhPjpXSU/giphy.gif?cid=ecf05e477w9yerragmxnnb2qjnps3mfjm1qwboswdkjvc3nk&rid=giphy.gif"
+    url_easy = "https://media1.tenor.com/images/21e7db21e5740c21cc1381c77034bc99/tenor.gif?itemid=19004656"
+    url_pushing = "https://media1.tenor.com/images/e81a17f0d615e02388b4f928fa058174/tenor.gif?itemid=14472298"
+    url_gainz = "https://media1.tenor.com/images/88c93f5dcda0498441a8086e5b2abdb3/tenor.gif?itemid=13782870"
+    url_100 = "https://media1.tenor.com/images/d38adda30b83584f8c111e48b82328a9/tenor.gif?itemid=15455331"
+    
+    new_max = ifelse(input$rir == "zero", input$Rmax, 
+              ifelse(input$rir == "one", input$Rmax * 0.95,
+              ifelse(input$rir == "two", input$Rmax * 0.90,
+              ifelse(input$rir == "three", input$Rmax * 0.85, input$Rmax * 0.8))))
+    
+    change = ifelse(input$still == -3, -3, 
+             ifelse(input$still == -2, -2, 
+             ifelse(input$still == -1, -1,
+             ifelse(input$still == 0, 0,
+             ifelse(input$still == 1, 1, 
+             ifelse(input$still == 2, 2, 3))))))
+    
+    total_pain = input$pain + change
+    
+    determine = 
+      ifelse(c(total_pain > 8.5), url_not.happening, 
+      ifelse(c(total_pain >= 5.5 & total_pain < 8.5), url_careful, 
+      ifelse(c(total_pain < 5.5 & (input$percent >= 50 & input$percent < 67.5)), url_easy,
+      ifelse(c(total_pain < 5.5 & (input$percent >= 67.5 & input$percent < 77.5)), url_pushing,
+      ifelse(c(total_pain < 5.5 & (input$percent >= 77.5 & input$percent < 87.5)), url_gainz, url_100)))))
+    
+    tags$img(src = determine, height = 500, width = 750)
+    
+    
+  })
+  
+  # Print out the appropriate messaging relating to exercise intensity 
+  
+  output$text = renderText({
+    
+    new_max = ifelse(input$rir == "zero", input$Rmax, 
+              ifelse(input$rir == "one", input$Rmax * 0.95,
+              ifelse(input$rir == "two", input$Rmax * 0.90,
+              ifelse(input$rir == "three", input$Rmax * 0.85, input$Rmax * 0.8))))
+    
+    change = ifelse(input$still == -3, -3, 
+             ifelse(input$still == -2, -2, 
+             ifelse(input$still == -1, -1,
+             ifelse(input$still == 0, 0,
+             ifelse(input$still == 1, 1, 
+             ifelse(input$still == 2, 2, 3))))))
+    
+    total_pain = input$pain + change
+    
+    
+    ifelse(c(total_pain > 8.5), "Hey, these things happen. You've either run yourself into the ground over the last few sessions or there's some underlying stuff going on.  In any case, it's not happening today.  Your best bet is to take the day off and see how you are feeling over the next couple of days.  If you are feeling better, that's great!  Just slowly ramp up the intensity.  Otherwise, go see a medical professional if you still can't go.", 
+    ifelse(c(total_pain >= 5.5 & total_pain < 8.5), "Here the thing, we're like at the point that things can go real bad if we're not careful (i.e.getting injured).  So let's not rock the boat any more than we need to.  Listen to your body and do what you can.  If things need to change in any way to make it more tolerable, do so!  This can mean changing the exercise or just lowering the intensity.", 
+    ifelse(c(total_pain < 5.5 & (input$percent >= 50 & input$percent < 67.5)), "OK, we're more or less going through the motion now.  Either you're starting to feeling run down because of work and whatnot or the last few sessions were pretty tough and you need some feel good lifting. The focus here is really to just get some work in without really pushing it.  So challenge yourself here by refining your technique and/or adding some interesting conditions to make it somewhat challenging without increasing the load.",
+    ifelse(c(total_pain < 5.5 & (input$percent >= 67.5 & input$percent < 77.5)), "We're putting in some excellent work here with a nice balance in volume and load.  We're really thinking about getting as much quality reps as we can here with a load that makes this challenging.  This is the kind of intensity where you are looking for that elusive 'pump'.",
+    ifelse(c(total_pain < 5.5 & (input$percent >= 77.5 & input$percent < 87.5)), "This is where you'll be pushing it with the weights.  There's no hiding it, this will be HEAVY.  While the reps will be significantly lower than before, this is a noticeable increase in weights.  Focus on maintaining excellent form for each rep with near-maximal effort.", "Put on your favorite hype track, sniff your smelling salts and hit that pre-workout like your tossing back some tequila shots.  We're pushing it to the limit!  This is really reserve for testing to see how strong you've gotten or if you are peaking for some kind of competition.  Really, you are attempting like your 1-rep max here.  So you're entire focus should be on the quality of the rep and your lifting technique.")))))
+    
+  })
+  
+  # Print out the name of the exercise based on the criteria
+  
+  output$name= renderText({
+    
+    as.character(
+      exercise_list %>% 
+        filter(Equipment== input$stuff) %>%
+        filter(Muscles == input$area) %>% 
+        filter(Complexity == input$skill) %>% 
+        filter(Purpose == input$purpose) %>% 
+        select(Exercise)
+     )
+    
+  })
+  
+  # Provide a Video tutorial on how to perform said exercise 
+  
+  output$video = renderUI({
+    
+    url = as.character(
+      exercise_list %>% 
+        filter(Equipment== input$stuff) %>%
+        filter(Muscles == input$area) %>% 
+        filter(Complexity == input$skill) %>% 
+        filter(Purpose == input$purpose) %>% 
+        select(Links)
+    )
+    
+    tags$iframe(
+      width = 950, 
+      height = 650, 
+      src = url
+    )
+    
+  })
+  
+}
+
+
+
+##############################################
+
+shinyApp(ui=ui, server = server)
