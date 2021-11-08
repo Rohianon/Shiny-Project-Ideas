@@ -1,0 +1,1407 @@
+# Load the basic libraries
+
+library(tidyverse)
+library(shiny)
+library(tools)
+library(stats)
+library(stringi)
+library(textclean)
+library(lubridate)
+library(survminer)
+library(survival)
+library(shinydashboard)
+library(shinyWidgets)
+
+# HEADER -----------------------------------
+
+header = dashboardHeader(
+  title = "Bang Personal Training Membership Tracker",
+  titleWidth = 450
+)
+
+# SIDEBAR ------------------------------------
+
+sidebar = dashboardSidebar(
+  width = 400, 
+  sidebarMenu(
+    menuItem("ABOUT", tabName = "tab_about", icon = icon("fa-solid fa-info")),
+    menuItem("DEMOGRAPHICS", tabName = "tab_demo", icon = icon("fa-solid fa-id-card"),
+             menuSubItem("OVERALL", tabName = "sub_tab_overall"),
+             menuSubItem("BY AGE GROUPS", tabName = "sub_tab_age"),
+             menuSubItem("BY DISTANCE FROM BANG", tabName = "sub_tab_distance"),
+             menuSubItem("BY GENDER", tabName = "sub_tab_gender"),
+             menuSubItem("BY JOB INDUSTRIES", tabName = "sub_tab_job")),
+    menuItem("MEMBERSHIP - COMPARISONS", tabName = "tab_membership", icon = icon("fa-solid fa-dumbbell")),
+    menuItem("MEMBERSHIP - LIFETIME", tabName = 'tab_lifetime', icon = icon("fa-solid fa-chart-line"))
+  )
+)
+
+# BODY --------------------------------
+
+body = dashboardBody(
+  tabItems(
+    
+    ## ABOUT SECTION ---------------------------------
+    
+    tabItem(
+     "tab_about",
+     fluidRow(
+       box(title = "  ", solidHeader = T, status = "primary", width = 4,
+           tags$div(
+             HTML(
+               "<body><header style = 'text-align: center'><h2 style = 'font-size: 45px'><strong>
+               WHAT'S THIS ABOUT?
+               </strong></h2></header></body>")),
+           tags$img(class = "img-responsive img-rounded center-block", 
+                    src = "https://i.kym-cdn.com/photos/images/facebook/001/338/614/ca5.png", 
+                    width = "300 px", 
+                    height = "200px"),
+           tags$div(
+             HTML("<body> <p style = 'font-size: 125%; text-align: justify'>
+                    Since reopening from the 2020-2021 lockdown, the importance of tracking membership 
+                    activity has never been more important. In order to gain some further insights on
+                    memberships, we'll be looking at certain demographic factors and/or membership types 
+                    to see if there may be any relationships relating to membership lifecycle, as well as 
+                    comparing between groups. 
+                  </p> </body>")),
+           tags$br(),
+           tags$div(
+             HTML(
+               "<body><p style = 'font-size: 125%; text-align: justify'> 
+               Factors that we'll be looking at will include: 
+               </p> </body>")),
+           tags$div(
+             HTML("<ul style = 'font-size: 125%'>
+                      <li> Age </li>
+                      <li> Distance from Bang HQ </li>
+                      <li> Gender </li>
+                      <li> Job Industries </li>
+                      <li> Membership Type </li>
+                    </ul>"))),
+       box(title = "   ", solidHeader = T, status = "primary", width = 4, 
+           tags$div(
+             HTML(
+               "<body><header style = 'text-align: center'><h2 style = 'font-size: 45px'><strong>
+               HOW THIS WORKS?
+               </strong></h2></header></body>")),
+           tags$br(),
+           tags$div(
+             HTML(
+               "<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+               1. Load the two data sets containing data from AirTable (the most-recent data and the reference data). 
+               </strong></p></body>")),
+           tags$img(class = "img-responsive img-rounded center-block", src = "https://i0.wp.com/miniextensions.com/wp-content/uploads/sites/5/2020/03/exportCSV.001.png?fit=2048%2C1024&ssl=1", width = "300 px", height = "200px"),
+           tags$br(),
+           tags$div(
+             HTML(
+               "<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+               2. Explore the differences between the two data sets according to differences in demographics and membership. 
+               </strong></p></body>")),
+           tags$img(class = "img-responsive img-rounded center-block", src = "https://statisticsglobe.com/wp-content/uploads/2020/10/figure-2-plot-draw-grouped-barplot-in-r-programming-language-1024x768.png", width = "300 px", height = "200px"),
+           tags$br(),
+           tags$div(
+             HTML(
+               "<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+               3. Examine the length of membership lifecycle from point of onboarding until end of membership. 
+               </strong></p></body>")),
+           tags$img(class = "img-responsive img-rounded center-block", src = "http://www.sthda.com/sthda/RDoc/figure/survminer/surminer-ggplot2-survival-plot-all-1.png", width = "300 px", height = "200px")
+       ),
+         box(title = "   ", solidHeader = T, status = "primary", width = 4,
+           tags$div(HTML("<body><header style = 'text-align: center'><h2 style = 'font-size: 45px'><strong> STEP 1: LOADING THE TWO DATASETS</strong></h2></header></body>")),
+           tags$br(),
+           fileInput(inputId = "recent_data", label = "Import Recent Dataset Here", multiple = F, buttonLabel = "Browse", accept = c(".csv")), 
+           fileInput(inputId = "reference_data", label = "Import Reference Dataset Here", multiple = F, buttonLabel = "Browse", accept = c(".csv"))
+         )
+       )
+    ), 
+    
+    ## DEMOGRAPHIC SECTION ---------------------------------
+    ### OVERALL ---------------------------------
+    
+    tabItem(
+     'sub_tab_overall',
+     fluidRow(
+       box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', 
+         tags$div(
+           HTML("<body><p style = 'font-size: 125%; text-align: justify'> <strong> 
+             Select which data set to examine 
+             </strong> </p> </body>")),
+         tags$br(),
+         switchInput(inputId = 'dataset_overall', onLabel = "Recent", offLabel = "Reference", value = T)),
+        box(title = "INPUT 2. Selecting the demographic variables", solidHeader = T, status = 'primary', 
+         tags$div(
+           HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+                Which demographic variable are you interested in? 
+                </strong></p></body>")),
+         radioGroupButtons(inputId = 'overall_variables', label = "", choices = c("Age"='age', 
+                                                                                  "Distance from Bang HQ (in KM)" = 'distance', 
+                                                                                  "Gender" = 'gender', 
+                                                                                  'Job Sector' = 'job'))
+         )),
+     fluidRow(
+       box(title = "OUTPUT", width = 12, solidHeader = T, status = 'primary',
+           plotOutput(outputId = "overall", height = 650)
+       )
+     )
+    ),
+    
+    ### AGE ---------------------------------
+    
+    tabItem(
+     "sub_tab_age",
+     fluidRow(
+       box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'> <strong> 
+             Select which data set to examine 
+             </strong> </p> </body>")),
+           tags$br(),
+           switchInput(inputId = 'dataset_age', onLabel = "Recent", offLabel = "Reference", value = T)),
+       box(title = "INPUT 2. Selecting the demographic variables", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+                Which demographic variable are you interested in reference to age? 
+                </strong></p></body>")),
+           radioGroupButtons(inputId = 'age_variables', label = "", choices = c("Distance from Bang HQ (in KM)" = 'distance', 
+                                                                                "Gender" = 'gender', 
+                                                                                'Job Sector' = 'job'))
+       )),
+     fluidRow(
+       box(title = "OUTPUT", width = 12, solidHeader = T, status = 'primary',
+           plotOutput(outputId = "age_plot", height = 650)
+       )
+     )
+    ),
+    
+    ### GENDER ---------------------------------
+    
+    tabItem(
+     "sub_tab_gender", 
+     fluidRow(
+       box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'> <strong> 
+             Select which data set to examine 
+             </strong> </p> </body>")),
+           tags$br(),
+           switchInput(inputId = 'dataset_gender', onLabel = "Recent", offLabel = "Reference", value = T)),
+       box(title = "INPUT 2. Selecting the demographic variables", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+                Which demographic variable are you interested in reference to gender? 
+                </strong></p></body>")),
+           radioGroupButtons(inputId = 'gender_variables', label = "", choices = c("Age" = "age", 
+                                                                                "Distance from Bang HQ (in KM)" = 'distance', 
+                                                                                'Job Sector' = 'job'))
+       )),
+     fluidRow(
+       box(title = "OUTPUT", width = 12, solidHeader = T, status = 'primary',
+           plotOutput(outputId = "gender_plot", height = 650)
+       )
+     )
+    ),
+    
+    ### JOB ---------------------------------
+    
+    tabItem(
+     "sub_tab_job",
+     fluidRow(
+       box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'> <strong> 
+             Select which data set to examine 
+             </strong> </p> </body>")),
+           tags$br(),
+           switchInput(inputId = 'dataset_job', onLabel = "Recent", offLabel = "Reference", value = T)),
+       box(title = "INPUT 2. Selecting the demographic variables", solidHeader = T, status = 'primary', 
+           tags$div(
+             HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+                Which demographic variable are you interested in reference to job sector? 
+                </strong></p></body>")),
+           radioGroupButtons(inputId = 'job_variables', label = "", choices = c('Age' = 'age', 
+                                                                                "Distance from Bang HQ (in KM)" = 'distance', 
+                                                                                "Gender" = 'gender' 
+                                                                                ))
+       )),
+     fluidRow(
+       box(title = "OUTPUT", width = 12, solidHeader = T, status = 'primary',
+           plotOutput(outputId = "job_plot", height = 650)
+       )
+     )
+    ),
+    
+    ### DISTANCE ---------------------------------
+    
+    tabItem(
+      "sub_tab_distance",
+      fluidRow(
+        box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', 
+            tags$div(
+              HTML("<body><p style = 'font-size: 125%; text-align: justify'> <strong> 
+             Select which data set to examine 
+             </strong> </p> </body>")),
+            tags$br(),
+            switchInput(inputId = 'dataset_distance', onLabel = "Recent", offLabel = "Reference", value = T)),
+        box(title = "INPUT 2. Selecting the demographic variables", solidHeader = T, status = 'primary', 
+            tags$div(
+              HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> 
+                Which demographic variable are you interested in reference to distance? 
+                </strong></p></body>")),
+            radioGroupButtons(inputId = 'distance_variables', label = "", choices = c("Age" = "age", 
+                                                                                      "Gender" = 'gender',
+                                                                                      "Job Sector" = "job"))
+        )),
+      fluidRow(
+        box(title = "OUTPUT", width = 12, solidHeader = T, status = 'primary',
+            plotOutput(outputId = "distance_plot", height = 650)
+        )
+      )
+    ),
+    
+    ## MEMBERSHIP STATUS -------------------------
+    
+    tabItem(
+      "tab_membership",
+      fluidRow(
+        box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = 'primary', width = 4,
+            tags$div(
+              HTML(
+                "<body><p style = 'font-size: 125%; text-align: justify'><strong>
+                Select which data set to examine
+                </body></p></strong>"
+              )
+            ), 
+            tags$br(),
+            switchInput(inputId = 'dataset_membership', onLabel = "Recent", offLabel = "Reference", value = TRUE), 
+            tags$br()
+            ),
+        box(title = "INPUT 2. Selecting the membership type of interest", solidHeader = T, status = 'primary', width = 4,
+          tags$div(
+            HTML(
+              "<body><p style = 'font-size: 125%; text-align: justify'><strong>
+                Which aspect of membership are you interested in looking at?
+                </body></p></strong>"
+            )
+          ),
+          selectInput(inputId = "member_type", label = "", choices = c("All Memberships" = "all", 
+                                                                           "All-in Memberships" = "all-in", 
+                                                                           "Annual Memberships" = "annual", 
+                                                                           "Group Classes Only" = "group",
+                                                                           "Month-to-Month Memberships" = "m2m",
+                                                                           "Online Coaching" = "online",
+                                                                           "QuickStart" = "quick", 
+                                                                           "Secret Menu" = "secret"))
+        ),
+        box(title = "INPUT 3. Selecting demographic variables of interest", solidHeader = T, status = 'primary', width = 4,
+            tags$div(
+              HTML(
+                "<body><p style = 'font-size: 125%; text-align: justify'><strong>
+                Which demographic are you interested to look at in relation to membership type?
+                </body></p></strong>"
+              )
+            ),
+            selectInput(inputId = "demographic", label = "", choices = c("Age" = "age", 
+                                                                         "Distance from Bang HQ (in KM)" = "distance", 
+                                                                         "Gender"="gender",
+                                                                         "Job Sector"="job"))
+          
+        )),
+      fluidRow(
+        valueBoxOutput(outputId = "active_member"),
+        valueBoxOutput(outputId = "pause_member"),
+        valueBoxOutput(outputId = "former_member")
+      ), 
+      fluidRow(
+        box(title = "OUTPUT", solidHeader = T, status = 'primary', width = 12,
+            plotOutput(outputId = "membership_plot", height = 650)
+        )
+      )),
+    tabItem(
+      "tab_lifetime",
+      fluidRow(
+        box(title = "INPUT 1. Selecting the dataset", solidHeader = T, status = "primary", 
+            tags$div(HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> Which dataset are you looking at? </strong></p></body>")),
+            switchInput(inputId = "dataset_across_lifetime", label = "", onLabel = "Recent", offLabel = "Reference", value = TRUE)
+        ), 
+        box(title = "INPUT 2. Which variable are you interested in looking at", solidHeader = T, status = 'primary', 
+            tags$div(HTML("<body><p style = 'font-size: 125%; text-align: justify'><strong> Select the variable to look at </strong></p></body>")),
+            radioGroupButtons(inputId = "lifetime_variables", label = " ", justified = T, 
+                              choices = c('Age', "Distance", "Gender", "Job", "Membership", "None"), selected = "None", 
+                              checkIcon = list(yes = icon("fa-solid fa-thumbs-up"), no = icon("fa-solid fa-thumbs-down")))
+        )
+      ), 
+      fluidRow(
+        box(title = "FILTER BY AGE?", label = "Select relevant age group(s)", 
+            solidHeader = T, status = "primary", width = 2, 
+            tags$br(), uiOutput(outputId = "factor_age")),
+        box(title = "FILTER BY DISTANCE FROM BANG HQ?", label = "Select relevant distance(s)", 
+            solidHeader = T, status = "primary", width = 2, 
+            tags$br(), uiOutput(outputId = "factor_dist")),
+        box(title = "FILTER BY GENDER?", label = "Select relevant gender(s)", 
+            solidHeader = T, status = "primary", width = 2, 
+            tags$br(), uiOutput(outputId = "factor_gender")),
+        box(title = "FILTER BY JOB INDUSTRIES?", label = "Select relevant job sector", 
+            solidHeader = T, status = "primary", width = 3, 
+            tags$br(), uiOutput(outputId = "factor_job")),
+        box(title = "FILTER BY MEMBERSHIPS?", label = "Select relevant membership type", 
+            solidHeader = T, status = "primary", width = 3, 
+            tags$br(), uiOutput(outputId = "factor_membership"))
+      ), 
+      fluidRow(
+        box(title = "MEMBERSHIP RETENTION RATES", solidHeader = T, 
+            status = "primary", width = 12, plotOutput(outputId = "lifetime_show_off", height = 750)
+        ))
+    )
+    
+  ) # END TABITEMS
+) # END DASHBOARDBODY
+
+ui = dashboardPage(header, sidebar, body)
+
+server= function(input, output){
+  
+  # ESTABLISH MODIFICATIONS TO DATA SETS FOR ANALYSIS
+  
+  data_recent = reactive({
+    if(is.null(input$recent_data)){
+      return()
+    } else {
+      
+      data = read.csv(input$recent_data$datapath, header = TRUE)
+      
+      today = "10-27-2021"
+      
+      colnames(data) = c("Tag", "Name", "Gender", "Job_Sector", 'Age_Group', 'Distance_KM', 'Start_Date', "Membership_Type", 'Monthly_Rate', "Membership_Status", "Membership_End_Date")
+      
+      data$Gender = factor(data$Gender)
+      data$Job_Sector = factor(data$Job_Sector)
+      data$Age_Group = factor(data$Age_Group, levels = c("< 18", "18-24", '25-34', '35-54', '55+'))
+      data$Distance_KM = factor(data$Distance_KM, levels = c("< 5 ", "5-9.99" , "10-19.99", "20-39.99", "40+"))
+      data$Membership_Status = factor(data$Membership_Status)
+      data$Membership_Type = factor(data$Membership_Type)
+      
+      data = data %>% mutate(Monthly_Rate = ifelse(is.na(Monthly_Rate), 0, Monthly_Rate))
+      
+      data = data %>%
+        mutate(
+          Start_Date = str_replace( Start_Date, "Jan", '01'),
+          Start_Date = str_replace( Start_Date, "Feb", '02'),
+          Start_Date = str_replace( Start_Date, "Mar", '03'),
+          Start_Date = str_replace( Start_Date, "Apr", '04'),
+          Start_Date = str_replace( Start_Date, "May", '05'),
+          Start_Date = str_replace( Start_Date, "Jun", '06'),
+          Start_Date = str_replace( Start_Date, "Jul", '07'),
+          Start_Date = str_replace( Start_Date, "Aug", '08'),
+          Start_Date = str_replace( Start_Date, "Sep", '09'),
+          Start_Date = str_replace( Start_Date, "Oct", '10'),
+          Start_Date = str_replace( Start_Date, "Nov", '11'),
+          Start_Date = str_replace( Start_Date, "Dec", '12'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jan", '01'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Feb", '02'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Mar", '03'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Apr", '04'),
+          Membership_End_Date = str_replace( Membership_End_Date, "May", '05'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jun", '06'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jul", '07'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Aug", '08'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Sep", '09'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Oct", '10'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Nov", '11'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Dec", '12')
+        )
+      
+      data = data %>% mutate(update_membership_status = ifelse(Membership_Status == 'Active', 1, 0))
+      
+      
+      data = data %>% 
+        mutate(
+          Start_Date = lubridate::mdy(Start_Date),
+          Membership_End_Date = ifelse(Membership_End_Date == "", today, Membership_End_Date)
+        ) %>% 
+        mutate(
+          Start_Date = as.Date(Start_Date),
+          Membership_End_Date = lubridate::mdy(Membership_End_Date)
+        ) %>% 
+        mutate(diff = Membership_End_Date - Start_Date)
+      
+      data
+      
+    }
+  })
+  
+  
+  data_reference = reactive({
+    if(is.null(input$reference_data)){
+      return()
+    } else {
+      
+      data_old = read.csv(input$reference_data$datapath, header = TRUE)
+      
+      today = "10-27-2021"
+      
+      colnames(data_old) = c("Tag", "Name", "Gender", "Job_Sector", 'Age_Group', 'Distance_KM', 'Start_Date', "Membership_Type", 'Monthly_Rate', "Membership_Status", "Membership_End_Date")
+      
+      data_old$Gender = factor(data_old$Gender)
+      data_old$Job_Sector = factor(data_old$Job_Sector)
+      data_old$Age_Group = factor(data_old$Age_Group, levels = c("< 18", "18-24", '25-34', '35-54', '55+'))
+      data_old$Distance_KM = factor(data_old$Distance_KM, levels = c("< 5 ", "5-9.99" , "10-19.99", "20-39.99", "40+"))
+      data_old$Membership_Status = factor(data_old$Membership_Status)
+      data_old$Membership_Type = factor(data_old$Membership_Type)
+      
+      data_old = data_old %>% mutate(Monthly_Rate = ifelse(is.na(Monthly_Rate), 0, Monthly_Rate))
+      
+      data_old = data_old %>%
+        mutate(
+          Start_Date = str_replace( Start_Date, "Jan", '01'),
+          Start_Date = str_replace( Start_Date, "Feb", '02'),
+          Start_Date = str_replace( Start_Date, "Mar", '03'),
+          Start_Date = str_replace( Start_Date, "Apr", '04'),
+          Start_Date = str_replace( Start_Date, "May", '05'),
+          Start_Date = str_replace( Start_Date, "Jun", '06'),
+          Start_Date = str_replace( Start_Date, "Jul", '07'),
+          Start_Date = str_replace( Start_Date, "Aug", '08'),
+          Start_Date = str_replace( Start_Date, "Sep", '09'),
+          Start_Date = str_replace( Start_Date, "Oct", '10'),
+          Start_Date = str_replace( Start_Date, "Nov", '11'),
+          Start_Date = str_replace( Start_Date, "Dec", '12'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jan", '01'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Feb", '02'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Mar", '03'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Apr", '04'),
+          Membership_End_Date = str_replace( Membership_End_Date, "May", '05'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jun", '06'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Jul", '07'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Aug", '08'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Sep", '09'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Oct", '10'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Nov", '11'),
+          Membership_End_Date = str_replace( Membership_End_Date, "Dec", '12')
+        )
+      
+      data_old = data_old %>% mutate(update_membership_status = ifelse(Membership_Status == 'Active', 1, 0))
+      
+      
+      data_old = data_old %>% 
+        mutate(
+          Start_Date = lubridate::mdy(Start_Date),
+          Membership_End_Date = ifelse(Membership_End_Date == "", today, Membership_End_Date)
+        ) %>% 
+        mutate(
+          Start_Date = as.Date(Start_Date),
+          Membership_End_Date = lubridate::mdy(Membership_End_Date)
+        ) %>% 
+        mutate(diff = Membership_End_Date - Start_Date)
+      
+      data_old
+      
+    }
+  })
+  
+  # SELECTING THE RIGHT VARIABLE TO USE 
+  
+  overall_data_select = reactive({
+    if(input$dataset_overall == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  age_data_select = reactive({
+    if(input$dataset_age == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  distance_data_select = reactive({
+    if(input$dataset_distance == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  gender_data_select = reactive({
+    if(input$dataset_gender == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  job_data_select = reactive({
+    if(input$dataset_job == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  membership_data_select = reactive({
+    if(input$dataset_membership == TRUE){
+      data_recent()
+    }else{
+      data_reference()
+    }
+  })
+  
+  
+  # PLOTTING THE PLOTS - Overall
+  
+  output$overall = renderPlot({
+    
+    if(input$overall_variables == "age"){
+      overall_data_select() %>%
+        ggplot(aes(x = Age_Group, fill = Age_Group)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        scale_fill_manual(values = c("< 18" = "slategrey", "18-24" = 'navyblue', '25-34' = 'firebrick', '35-54' = 'goldenrod', '55+' = 'purple')) + 
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        guides(fill = 'none') + 
+        labs(x = "Age", y = "Number of Past/Present Members") + 
+        coord_flip()
+    } else if(input$overall_variables == "distance"){
+      overall_data_select() %>%
+        ggplot(aes(x = Distance_KM, fill = Distance_KM)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        scale_fill_manual(values = c("< 5 " = "slategrey", "5-9.99" = 'navyblue', '10-19.99' = 'firebrick', '20-39.99' = 'goldenrod', '40+' = 'purple')) + 
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        guides(fill = 'none') + 
+        labs(x = "Distance from Bang HQ (in KM)", y = "Number of Past/Present Members") + 
+        coord_flip()
+    } else if(input$overall_variables == "gender"){
+      overall_data_select() %>%
+        ggplot(aes(x = Gender, fill = Gender)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        guides(fill = 'none') + 
+        labs(x = "Gender", y = "Number of Past/Present Members") + 
+        coord_flip()
+    } else {
+      overall_data_select() %>%
+        ggplot(aes(x = Job_Sector, fill = Job_Sector)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        theme(
+          axis.text.x = element_text(color = 'black', size = 12, angle = 90, hjust = 0.5),
+          axis.text.y = element_text(color = 'black', size = 12),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        guides(fill = 'none') + 
+        labs(x = "Job Sectors", y = "Number of Past/Present Members")
+    }
+    
+  })
+  
+  # PLOTTING THE PLOTS - Age
+  
+  output$age_plot =  renderPlot({
+    if(input$age_variables == 'distance'){
+      age_data_select() %>% 
+        ggplot(aes(x = Distance_KM, fill = Distance_KM)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Age_Group)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Distance from Bang HQ (in KM)", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else if(input$age_variables == "gender"){
+      age_data_select() %>% 
+        ggplot(aes(x = Gender, fill = Gender)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Age_Group)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Gender", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else {
+      age_data_select() %>% 
+        ggplot(aes(x = Job_Sector, fill = Job_Sector)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Age_Group)) +
+        theme(
+          axis.text.y = element_text(color = 'black', size = 13),
+          axis.text.x = element_text(color = 'black', size = 13, angle = 90, hjust = 0.5),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Job Sectors", y = 'Number of Past/Present Members')
+    }
+  })
+  
+  # PLOTTING THE PLOTS - Distance
+  
+  output$distance_plot =  renderPlot({
+    if(input$distance_variables == 'age'){
+      distance_data_select() %>% 
+        ggplot(aes(x = Age_Group, fill = Age_Group)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Distance_KM)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Age Groups", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else if(input$distance_variables == "gender"){
+      distance_data_select() %>% 
+        ggplot(aes(x = Gender, fill = Gender)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Distance_KM)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Gender", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else {
+      distance_data_select() %>% 
+        ggplot(aes(x = Job_Sector, fill = Job_Sector)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Distance_KM)) +
+        theme(
+          axis.text.y = element_text(color = 'black', size = 13),
+          axis.text.x = element_text(color = 'black', size = 13, angle = 90, hjust = 0.5),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Job Sectors", y = 'Number of Past/Present Members')
+    }
+  })
+  
+  # PLOTTING THE PLOTS - Gender
+  
+  output$gender_plot =  renderPlot({
+    if(input$gender_variables == 'age'){
+      gender_data_select() %>% 
+        ggplot(aes(x = Age_Group, fill = Age_Group)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Gender)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Age Groups", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else if(input$gender_variables == "distance"){
+      gender_data_select() %>% 
+        ggplot(aes(x = Distance_KM, fill = Distance_KM)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Gender)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Distance from Bang HQ (in KM)", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else {
+      gender_data_select() %>% 
+        ggplot(aes(x = Job_Sector, fill = Job_Sector)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Gender)) +
+        theme(
+          axis.text.y = element_text(color = 'black', size = 13),
+          axis.text.x = element_text(color = 'black', size = 13, angle = 90, hjust = 0.5),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Job Sectors", y = 'Number of Past/Present Members')
+    }
+  })
+  
+  # PLOTTING THE PLOTS - Job
+  
+  output$job_plot =  renderPlot({
+    if(input$job_variables == 'age'){
+      job_data_select() %>% 
+        ggplot(aes(x = Age_Group, fill = Age_Group)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Job_Sector)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Age Groups", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else if(input$job_variables == "gender"){
+      job_data_select() %>% 
+        ggplot(aes(x = Gender, fill = Gender)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Job_Sector)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Gender", y = 'Number of Past/Present Members') + 
+        coord_flip()
+    } else {
+      job_data_select() %>% 
+        ggplot(aes(x = Distance_KM, fill = Distance_KM)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        facet_wrap(vars(Job_Sector)) +
+        theme(
+          axis.text = element_text(color = 'black', size = 16),
+          axis.title = element_text(color = 'black', size = 20, face = 'bold'),
+          axis.line = element_line(color = 'black'),
+          strip.text = element_text(color = 'black', size = 16, face = 'bold')
+        ) + 
+        guides(fill = 'none') +
+        labs(x = "Distance from Bang HQ (in KM)", y = 'Number of Past/Present Members')  + 
+        coord_flip()
+    }
+  })
+  
+  
+  # FIGURING OUT THE cOUNTS 
+  
+  active_member_count = reactive({
+
+      if(input$member_type == "all"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active"))
+      } else if(input$member_type == "all-in"){
+       count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "All-in - 1x/week" | 
+                                                                                              Membership_Type == "All-in - 2x/week" | 
+                                                                                              Membership_Type == "All-in - 3x/week" | 
+                                                                                              Membership_Type == "All-in - 4x/week")))
+      } else if(input$member_type == "annual"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "Annual - 1x/week" | 
+                                                                                              Membership_Type == "Annual - 2x/week" | 
+                                                                                              Membership_Type == "Annual - 3x/week" | 
+                                                                                              Membership_Type == "Annual - 4x/week")))
+      }  else if(input$member_type == "m2m"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "Month-to-Month - 1x/week" | 
+                                                                                              Membership_Type == "Month-to-Month - 2x/week" | 
+                                                                                              Membership_Type == "Month-to-Month - 3x/week" | 
+                                                                                              Membership_Type == "Month-to-Month - 4x/week")))
+      }  else if(input$member_type == "group"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "Group Classes Only - 2x/week" | 
+                                                                                              Membership_Type == "Group Classes Only - 3x/week")))
+      }  else if(input$member_type == "online"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "Online Coaching")))
+      }  else if(input$member_type == "quick"){
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type == "Quick Start Promo")))
+      } else if(input$member_type == "secret") {
+        count(membership_data_select() %>% filter(Membership_Status == "Active" & (Membership_Type != "Quick Start Promo" & 
+                                                                                              Membership_Type != "Online Coaching" &
+                                                                                              Membership_Type != "Group Classes Only - 2x/week" &
+                                                                                              Membership_Type != "Group Classes Only - 3x/week" &
+                                                                                              Membership_Type != "Month-to-Month - 1x/week" & 
+                                                                                              Membership_Type != "Month-to-Month - 2x/week" & 
+                                                                                              Membership_Type != "Month-to-Month - 3x/week" & 
+                                                                                              Membership_Type != "Month-to-Month - 4x/week" &
+                                                                                              Membership_Type != "Annual - 1x/week" & 
+                                                                                              Membership_Type != "Annual - 2x/week" & 
+                                                                                              Membership_Type != "Annual - 3x/week" & 
+                                                                                              Membership_Type != "Annual - 4x/week" &
+                                                                                              Membership_Type != "All-in - 1x/week" & 
+                                                                                              Membership_Type != "All-in - 2x/week" & 
+                                                                                              Membership_Type != "All-in - 3x/week" & 
+                                                                                              Membership_Type != "All-in - 4x/week")))
+      }
+  })
+  
+  output$active_member = renderValueBox({
+    valueBox(
+      value = active_member_count(),
+      subtitle = "ACTIVE MEMBERS",
+      icon = icon("fas fa-dollar-sign"),
+      color = 'green'
+    )
+  })
+  
+  
+  paused_member_count = reactive({
+    
+    if(input$member_type == "all"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused"))
+    } else if(input$member_type == "all-in"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "All-in - 1x/week" | 
+                                                                                   Membership_Type == "All-in - 2x/week" | 
+                                                                                   Membership_Type == "All-in - 3x/week" | 
+                                                                                   Membership_Type == "All-in - 4x/week")))
+    } else if(input$member_type == "annual"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "Annual - 1x/week" | 
+                                                                                   Membership_Type == "Annual - 2x/week" | 
+                                                                                   Membership_Type == "Annual - 3x/week" | 
+                                                                                   Membership_Type == "Annual - 4x/week")))
+    }  else if(input$member_type == "m2m"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "Month-to-Month - 1x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 2x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 3x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 4x/week")))
+    }  else if(input$member_type == "group"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "Group Classes Only - 2x/week" | 
+                                                                                   Membership_Type == "Group Classes Only - 3x/week")))
+    }  else if(input$member_type == "online"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "Online Coaching")))
+    }  else if(input$member_type == "quick"){
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type == "Quick Start Promo")))
+    } else if(input$member_type == "secret") {
+      count(membership_data_select() %>% filter(Membership_Status == "Paused" & (Membership_Type != "Quick Start Promo" & 
+                                                                                   Membership_Type != "Online Coaching" &
+                                                                                   Membership_Type != "Group Classes Only - 2x/week" &
+                                                                                   Membership_Type != "Group Classes Only - 3x/week" &
+                                                                                   Membership_Type != "Month-to-Month - 1x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 2x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 3x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 4x/week" &
+                                                                                   Membership_Type != "Annual - 1x/week" & 
+                                                                                   Membership_Type != "Annual - 2x/week" & 
+                                                                                   Membership_Type != "Annual - 3x/week" & 
+                                                                                   Membership_Type != "Annual - 4x/week" &
+                                                                                   Membership_Type != "All-in - 1x/week" & 
+                                                                                   Membership_Type != "All-in - 2x/week" & 
+                                                                                   Membership_Type != "All-in - 3x/week" & 
+                                                                                   Membership_Type != "All-in - 4x/week")))
+    }
+  })
+  
+  output$pause_member = renderValueBox({
+    valueBox(
+      value = paused_member_count(),
+      subtitle = "PAUSED MEMBERS",
+      icon = icon("fas fa-hand-paper"),
+      color = 'yellow'
+    )
+  })
+  
+  
+  leaving_member_count = reactive({
+    
+    if(input$member_type == "all"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving"))
+    } else if(input$member_type == "all-in"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "All-in - 1x/week" | 
+                                                                                   Membership_Type == "All-in - 2x/week" | 
+                                                                                   Membership_Type == "All-in - 3x/week" | 
+                                                                                   Membership_Type == "All-in - 4x/week")))
+    } else if(input$member_type == "annual"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "Annual - 1x/week" | 
+                                                                                   Membership_Type == "Annual - 2x/week" | 
+                                                                                   Membership_Type == "Annual - 3x/week" | 
+                                                                                   Membership_Type == "Annual - 4x/week")))
+    }  else if(input$member_type == "m2m"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "Month-to-Month - 1x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 2x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 3x/week" | 
+                                                                                   Membership_Type == "Month-to-Month - 4x/week")))
+    }  else if(input$member_type == "group"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "Group Classes Only - 2x/week" | 
+                                                                                   Membership_Type == "Group Classes Only - 3x/week")))
+    }  else if(input$member_type == "online"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "Online Coaching")))
+    }  else if(input$member_type == "quick"){
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type == "Quick Start Promo")))
+    } else if(input$member_type == "secret") {
+      count(membership_data_select() %>% filter(Membership_Status == "Leaving" & (Membership_Type != "Quick Start Promo" & 
+                                                                                   Membership_Type != "Online Coaching" &
+                                                                                   Membership_Type != "Group Classes Only - 2x/week" &
+                                                                                   Membership_Type != "Group Classes Only - 3x/week" &
+                                                                                   Membership_Type != "Month-to-Month - 1x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 2x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 3x/week" & 
+                                                                                   Membership_Type != "Month-to-Month - 4x/week" &
+                                                                                   Membership_Type != "Annual - 1x/week" & 
+                                                                                   Membership_Type != "Annual - 2x/week" & 
+                                                                                   Membership_Type != "Annual - 3x/week" & 
+                                                                                   Membership_Type != "Annual - 4x/week" &
+                                                                                   Membership_Type != "All-in - 1x/week" & 
+                                                                                   Membership_Type != "All-in - 2x/week" & 
+                                                                                   Membership_Type != "All-in - 3x/week" & 
+                                                                                   Membership_Type != "All-in - 4x/week")))
+    }
+  })
+  
+  output$former_member = renderValueBox({
+    valueBox(
+      value = leaving_member_count(),
+      subtitle = "MEMBERS THAT LEFT",
+      icon = icon("fas fa-plane"),
+      color = 'red'
+    )
+  })
+  
+  output$membership_plot = renderPlot({
+    
+    if(input$demographic == "age") {
+      
+      membership_data_select() %>% 
+        ggplot(aes(x = Age_Group, fill = Age_Group)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        scale_fill_manual(values = c("< 18" = "slategrey",
+                                     "18-24" = "navyblue",
+                                     "25-34" = "firebrick",
+                                     "35-54" = "goldenrod",
+                                     "55+" = "purple"))+
+        theme(
+          axis.text.x = element_text(size = 16, color = 'black', face = 'italic'),
+          axis.text.y = element_text(size = 16, color = 'black', face = 'italic'),
+          strip.text = element_text(size = 10, color = 'black', face = 'italic'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        labs(x = "Age", y = 'Number of Past/Present Members') +
+        facet_wrap(vars(Membership_Type)) + 
+        coord_flip()  +
+        guides(fill = 'none')
+        
+    } else if(input$demographic == "distance") {
+      
+      membership_data_select() %>% 
+        ggplot(aes(x = Distance_KM, fill = Distance_KM)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        scale_fill_manual(values = c("< 5 " = "slategrey",
+                                     "5-9.99" = "navyblue",
+                                     "10-19.99" = "firebrick",
+                                     "20-39.99" = "goldenrod",
+                                     "40+" = "purple"))+
+        theme(
+          axis.text.x = element_text(size = 16, color = 'black', face = 'italic'),
+          axis.text.y = element_text(size = 16, color = 'black', face = 'italic'),
+          strip.text = element_text(size = 10, color = 'black', face = 'italic'),
+          axis.line = element_line(color = 'black')
+        ) +
+        labs(x = "Distance from Bang HQ (in KM)", y = 'Number of Past/Present Members') +
+        facet_wrap(vars(Membership_Type)) + 
+        coord_flip()  +
+        guides(fill = 'none')
+      
+    } else if(input$demographic == "gender") {
+      
+      membership_data_select() %>% 
+        ggplot(aes(x = Gender, fill = Gender)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        theme(
+          axis.text.x = element_text(size = 16, color = 'black', face = 'italic'),
+          axis.text.y = element_text(size = 16, color = 'black', face = 'italic'),
+          strip.text = element_text(size = 10, color = 'black', face = 'italic'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        labs(x = "Gender", y = 'Number of Past/Present Members') +
+        facet_wrap(vars(Membership_Type)) + 
+        coord_flip()  +
+        guides(fill = 'none')
+      
+    } else {
+      
+      membership_data_select() %>% 
+        ggplot(aes(x = Job_Sector, fill = Job_Sector)) + 
+        geom_bar(stat = 'count', color = 'black') + 
+        theme_classic() + 
+        theme(
+          axis.text.x = element_text(size = 12, color = 'black', face = 'italic', angle = 90, hjust = 0.5),
+          axis.text.y = element_text(size = 12, color = 'black', face = 'italic'),
+          strip.text = element_text(size = 10, color = 'black', face = 'italic'),
+          axis.line = element_line(color = 'black')
+        ) + 
+        labs(x = "Gender", y = 'Number of Past/Present Members') +
+        facet_wrap(vars(Membership_Type)) +
+        guides(fill = 'none')
+      
+    }
+    
+  })
+  
+  ## HANDLING LIFETIME 
+  
+  output$factor_age = renderUI({   
+    # REQUIRES "AGE" TO BE SELECTED
+    req(input$lifetime_variables == "Age")  
+    
+    # IF YES, GET THE FOLLOWING
+    radioGroupButtons(inputId = "just_age", label = "2A. Select which age group to look at", choices = c("< 18", "18-24", "25-34", "35-54", "55+", "All"))
+  })
+  
+  
+  output$factor_dist = renderUI({   
+    # REQUIRES "DISTANCE" TO BE SELECTED
+    req(input$lifetime_variables == "Distance")  
+    
+    # IF YES, GET THE FOLLOWING
+    radioGroupButtons(inputId = "just_dist", label = "2B. Select distance from Bang HQ to look at", choices = c("< 5", "5-9.99", "10-19.99", "20-39.99", "40+", "All"))
+  })
+  
+  
+  output$factor_gender = renderUI({   
+    # REQUIRES "GENDER" TO BE SELECTED
+    req(input$lifetime_variables == "Gender")  
+    
+    # IF YES, GET THE FOLLOWING
+    radioGroupButtons(inputId = "just_gender", label = "2C. Select gender group to look at", choices = c("Female", "Male", "Non-Binary", "All"))
+  })
+  
+  
+  output$factor_job = renderUI({   
+    # REQUIRES "JOB" TO BE SELECTED
+    req(input$lifetime_variables == "Job")  
+    
+    # IF YES, GET THE FOLLOWING
+    radioGroupButtons(inputId = "just_job", label = "2D. Select jobs to look at", choices = c("", "Advertising/Marketing", 
+                                                                                              "Arts & Culture", "CPG", "Education", 'Entrepreneurial', 
+                                                                                              'Finance', "Food & Hospitality", "Healthcare", "Law", 
+                                                                                              "Non-Profit", "Public Sector", "Real Estate/Development", 
+                                                                                              "Retail", "Student/Retiree", "Technology", 
+                                                                                              "Telecom", "Transportation", "All"))
+  })
+  
+  
+  output$factor_membership = renderUI({   
+    # REQUIRES "membership" TO BE SELECTED
+    req(input$lifetime_variables == "Membership")  
+    
+    # IF YES, GET THE FOLLOWING
+    radioGroupButtons(inputId = "just_membership", label = "2E. Select membership to look at", choices = c("All-in: 1x/week", "All-in: 2x/week", 
+                                                                                                           "All-in: 3x/week", "All-in: 4x/week", "Annual: 1x/week", 
+                                                                                                           'Annual: 2x/week', 'Annual: 3x/week', "Annual: 4x/week", 
+                                                                                                           "Group Only: 2x/week", "Group Only: 3x/week", 
+                                                                                                           "Monthly: 1x/week", "Monthly: 2x/week", "Monthly: 3x/week", 
+                                                                                                           "Monthly: 4x/week", "Online Coaching", "QuickStart", 
+                                                                                                           "Secret Menu", "All"))
+  })
+  
+  data_to_use = reactive({
+    if(input$dataset_across_lifetime == TRUE){
+      data_recent()
+    } else {
+      data_reference()
+    }
+  }) 
+  
+  fit_age = reactive({
+    
+    req(input$lifetime_variables == "Age")
+    
+    if(input$just_age == "< 18"){
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use() %>% filter(Age_Group == "< 18"))
+    } else if(input$just_age == "18-24"){
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use() %>% filter(Age_Group == "18-24"))
+    } else if(input$just_age == "25-34"){
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use() %>% filter(Age_Group == "25-34"))
+    } else if(input$just_age == "35-54"){
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use() %>% filter(Age_Group == "35-54"))
+    } else if(input$just_age == "55+"){
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use() %>% filter(Age_Group == "55+"))
+    } else {
+      survfit(Surv(diff, update_membership_status) ~ Age_Group, data_to_use()) 
+    }
+    
+  })
+  
+  
+  fit_distance = reactive({
+    
+    req(input$lifetime_variables == "Distance")
+    
+    if(input$just_dist == "< 5"){
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use() %>% filter(Distance_KM == "< 5 "))
+    } else if(input$just_dist == "5-9.99"){
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use() %>% filter(Distance_KM == "5-9.99"))
+    } else if(input$just_dist == "10-19.99"){
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use() %>% filter(Distance_KM == "10-19.99"))
+    } else if(input$just_dist == "20-39.99"){
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use() %>% filter(Distance_KM == "20-39.99"))
+    } else if(input$just_dist == "40+"){
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use() %>% filter(Distance_KM == "40+"))
+    } else {
+      survfit(Surv(diff, update_membership_status) ~ Distance_KM, data_to_use()) 
+    }
+    
+  })
+  
+  
+  fit_gender = reactive({
+    
+    req(input$lifetime_variables == "Gender")
+    
+    if(input$just_gender == "Male"){
+      survfit(Surv(diff, update_membership_status) ~ Gender, data_to_use() %>% filter(Gender == "Male"))
+    } else if(input$just_gender == "Female"){
+      survfit(Surv(diff, update_membership_status) ~ Gender, data_to_use() %>% filter(Gender == "Female"))
+    } else if(input$just_gender == "Non-Binary"){
+      survfit(Surv(diff, update_membership_status) ~ Gender, data_to_use() %>% filter(Gender == "Non-Binary"))
+    } else {
+      survfit(Surv(diff, update_membership_status) ~ Gender, data_to_use()) 
+    }
+    
+  })
+  
+  
+  fit_job = reactive({
+    
+    req(input$lifetime_variables == "Job")
+    
+    if(input$just_job == ""){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == ""))
+    } else if(input$just_job == "Advertising/Marketing"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Advertising & Marketing"))
+    } else if(input$just_job == "Arts & Culture"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Arts & Culture (including Journalism)"))
+    } else if(input$just_job == "CPG"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Consumer/Packaged Goods"))
+    } else if(input$just_job == "Education"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Education"))
+    } else if(input$just_job == "Entrepreneurial"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Entrepreneurial"))
+    } else if(input$just_job == "Finance"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Financial & Economic"))
+    } else if(input$just_job == "Food & Hospitality"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Hospitality (including Food and Beverage)"))
+    } else if(input$just_job == "Healthcare"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Healthcare"))
+    } else if(input$just_job == "Law"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Law"))
+    } else if(input$just_job == "Non-Profit"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Non-Profit (including Research Space)"))
+    } else if(input$just_job == "Public Sector"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Public Sector"))
+    } else if(input$just_job == "Real Estate/Development"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Real Estate & Development"))
+    } else if(input$just_job == "Retail"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Retail"))
+    } else if(input$just_job == "Student/Retiree"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Student/Retiree"))
+    } else if(input$just_job == "Technology"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Technology & Information"))
+    } else if(input$just_job == "Telecom"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Telecom"))
+    } else if(input$just_job == "Transportation"){
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use() %>% filter(Job_Sector == "Transportation"))
+    } else {
+      survfit(Surv(diff, update_membership_status) ~ Job_Sector, data = data_to_use())
+    }
+  })
+  
+  
+  fit_membership = reactive({
+    
+    req(input$lifetime_variables == "Membership")
+    
+    if(input$just_membership == "All-in: 1x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "All-in - 1x/week"))
+    } else if(input$just_membership == "All-in: 2x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "All-in - 2x/week"))
+    } else if(input$just_membership == "All-in: 3x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "All-in - 3x/week"))
+    } else if(input$just_membership == "All-in: 4x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "All-in - 4x/week"))
+    } else if(input$just_membership == "Annual: 1x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Annual - 1x/week"))
+    } else if(input$just_membership == "Annual: 2x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Annual - 2x/week"))
+    } else if(input$just_membership == "Annual: 3x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Annual - 3x/week"))
+    } else if(input$just_membership == "Annual: 4x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Annual - 4x/week"))
+    } else if(input$just_membership == "Group Only: 2x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Group Classes Only - 2x/week"))
+    } else if(input$just_membership == "Group Only: 3x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Group Classes Only - 3x/week"))
+    } else if(input$just_membership == "Monthly: 1x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Month-to-Month - 1x/week"))
+    } else if(input$just_membership == "Monthly: 2x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Month-to-Month - 2x/week"))
+    } else if(input$just_membership == "Monthly: 3x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Month-to-Month - 3x/week"))
+    } else if(input$just_membership == "Monthly: 4x/week"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Month-to-Month - 4x/week"))
+    } else if(input$just_membership == "QuickStart"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Quick Start Promo"))
+    } else if(input$just_membership == "Online Coaching"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type == "Online Coaching"))
+    } else if(input$just_membership == "All"){
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use())
+    } else {
+      survfit(Surv(diff, update_membership_status) ~ Membership_Type, data_to_use() %>% filter(Membership_Type != 'All-in - 1x/week' & Membership_Type != 'All-in - 2x/week' & 
+                                                                                                 Membership_Type != 'All-in - 3x/week' & Membership_Type != 'All-in - 4x/week' & 
+                                                                                                 Membership_Type != 'Annual - 1x/week' & Membership_Type != 'Annual - 2x/week' & 
+                                                                                                 Membership_Type != 'Annual - 3x/week' & Membership_Type != 'Annual - 4x/week' & Membership_Type != 'Group Class Only - 2x/week' & 
+                                                                                                 Membership_Type != 'Group Class Only - 3x/week' & Membership_Type != 'Online Coaching' & Membership_Type != 'Quick Start Promo' & Membership_Type != 'Month-to-Month - 1x/week' & 
+                                                                                                 Membership_Type != 'Month-to-Month - 2x/week' & Membership_Type != 'Month-to-Month - 3x/week' & Membership_Type != 'Month-to-Month - 4x/week'))
+    }
+  })
+  
+  
+  fit_none = reactive({
+    
+    req(input$lifetime_variables == "None")
+    
+    survfit(Surv(diff, update_membership_status) ~ 1, data_to_use())
+    
+  })
+  
+  output$lifetime_show_off = renderPlot({
+    
+    if(input$lifetime_variables == "Age"){
+      print(
+        ggsurvplot(
+          fit = fit_age(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    } else if(input$lifetime_variables == "Distance"){
+      print(
+        ggsurvplot(
+          fit = fit_distance(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    } else if(input$lifetime_variables == "Gender"){
+      print(
+        ggsurvplot(
+          fit = fit_gender(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    } else if(input$lifetime_variables == "Job"){
+      print(
+        ggsurvplot(
+          fit = fit_job(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    } else if(input$lifetime_variables == "Membership"){
+      print(
+        ggsurvplot(
+          fit = fit_membership(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    } else if(input$lifetime_variables == "None"){
+      print(
+        ggsurvplot(
+          fit = fit_none(),
+          data = data_to_use(),
+          xlab = "Time (in days)",
+          ylab = "Probability of Extended Pause/Leaving", 
+          break.time.by = 100,
+          legend = "bottom",
+          surv.scale = "percent",
+          ggtheme = theme(
+            panel.background = element_rect(color = 'black', fill = 'white'),
+            axis.text.x = element_text(size = 12, angle = 90, color = 'black'),
+            axis.text.y = element_text(size = 12, color = 'black'),
+            axis.title =  element_text(size = 15, color = 'black'))
+        )
+      )
+    }
+    
+  })
+  
+}
+
+shinyApp(ui, server)
